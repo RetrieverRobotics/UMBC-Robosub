@@ -18,11 +18,12 @@ public:
 	SubController();
 	~SubController();
 
-	void register(bool (*f)(InputState* in, TargetState* out));
+	void register(uint8_t (*f)(InputState* in, TargetState* out));
 
 	void step(InputState* in, TargetState* out) {
 		if(current_task != NULL) {
-			bool task_done = current_task(in, out);
+			uint8_t task_done = current_task(in, out);
+			// if non-zero...
 			if(task_done) {
 				// set current_task equal to the next function pointer
 				// in tasks or to NULL if there isn't another
@@ -30,7 +31,7 @@ public:
 		}	
 	}
 
-	bool isDone() {
+	uint8_t isDone() {
 		if(current_task == NULL) {
 			return true;
 		}
@@ -61,15 +62,15 @@ struct TargetState {
 	// target depth
 	// manipulator state
 	// torpedo launchers
-}
+};
 
 // layout of a task function
-bool SomeTask(InputState* in, TargetState* out) {
+uint8_t SomeTask(InputState* in, TargetState* out) {
 	// do whatever SomeTask does
-	// return false if it wants to be called again
-	// or true if it's done
+	// return 0 if it wants to be called again
+	// or non-zero if it's done, value depends on next task to be called
 }
-bool StopTask(InputState* in, TargetState* out) {
+uint8_t StopTask(InputState* in, TargetState* out) {
 	// another task
 	// stop all the motors, make things safe, etc
 }
@@ -103,5 +104,7 @@ int main(void) {
 			break;
 		}
 	}
+
+
 	return 0;
 }

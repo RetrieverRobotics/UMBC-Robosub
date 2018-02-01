@@ -4,12 +4,33 @@
 
 // INCOMPLETE
 
+class ContourInfo {
+public:
+	ContourInfo(std::vector<cv::Point> _contours, cv::Moments _moments, cv::Point2f _center)
+		: contours(_contours), moments(_moments), center(_center) {}
+
+	std::vector<cv::Point> getContours() {
+		return contours;
+	}
+	cv::Moments getMoments() {
+		return moments;
+	}
+	cv::Point2f getCenter() {
+		return center;
+	}
+
+private:
+	std::vector<cv::Point> contours;
+	cv::Moments moments;
+	cv::Point2f center;
+};
+
 int main(int argc, char* argv[]) {
 	using namespace std;
 	using namespace cv;
 
 	VideoCapture cap;
-	cap.open(1);
+	cap.open(0);
 
 	if(!cap.isOpened()) {
 		CV_Assert("Stream could not be opened");
@@ -36,6 +57,8 @@ int main(int argc, char* argv[]) {
 		// an empty video frame causes the program to crash
 		if(!in.empty()) {
 
+			in.copyTo(out); // could just overwrite in (same image really), but that might confuse me later
+
 			cvtColor(in, frame_hsv, COLOR_BGR2HSV);
 
 			// apply a threshold filter that outputs a binary image
@@ -57,40 +80,55 @@ int main(int argc, char* argv[]) {
 			// portion (Region of Interest), but the contours need to be mapped back onto the original image
 			findContours(frame_effect, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0));
 
-			vector<Moments> mu(contours.size()); // all moments for each contour
+			if(contours.size() > 0) {
+				string debug_text;
 
-			vector<vector<Point>> useful_contours;
-			vector<Moments> useful_moments;
-			vector<Point2f> useful_centers;
+				vector<ContourInfo> packs;
 
-			for(int i = 0; i < contours.size(); i++) {
-				// find contour moments
-				mu[i] = moments(contours[i], true); // true for binary image
+				for(int i = 0; i < contours.size(); i++) {
+					// find contour moments
+					Moments m = moments(contours[i], true); // true for binary image
 
-				// if the area of the contour meets a minimum area requirement
-				// set by the GUI slider, move the contour and the resultant moments
-				// to a new set of lists
-				if(mu[i].m00 > area_lower) {
-					useful_contours.push_back(contours[i]);
-					useful_moments.push_back(mu[i]);
-					useful_centers.push_back( Point2f(mu[i].m10/mu[i].m00, mu[i].m01/mu[i].m00));
+					// if the area of the contour meets a minimum area requirement
+					// set by the GUI slider, move the contour and the resultant moments
+					// to a new array
+
+					if(m.m00 > area_lower) {
+						Point2f c(m.m10/m.m00, m.m01/m.m00);
+
+						packs.push_back(ContourInfo(contours[i], m, c));
+					}
 				}
+
+				// TODO: sort useful contours by area
+				// may cause incorrect depth -> lock depth with pressure sensor and maintain flat, use only for heading
+				// still may have issues with the pin beyond, but worry about that later
+
+				// also, find vertical sections, near ones will have approximately the same top and bottom
+				// limited velocity estimation from stereo app?
+				
+				// hacky but good for now
+				for(int i = 0; i < packs.size(); i++) {
+					vector<vector<Point>> contour_list;
+					contour_list.push_back(packs[i].getContours());
+					// mat, list, index of list (or -1=all), color as BGR, line thickness, line type (4,8,AA)
+					drawContours(out, contour_list, -1, Scalar(0, 255, 0), 1, LINE_8);
+					circle(out, packs[i].getCenter(), 10, Scalar(255, 0, 0), 1, FILLED);
+				}
+
+				
+				debug_text += to_string(packs.size());
+
+				putText(out, debug_text, Point(10, 10), FONT_HERSHEY_SIMPLEX, 0.35, Scalar(0,0,0), 1);
+
 			}
 
-			in.copyTo(out); // could just overwrite in (same image really), but that might confuse me later
-
-			// then only draw the contours that meet the area requirement
-			// mat, list, index of list (or -1=all), color as BGR, line thickness, line type (4,8,AA)
-			drawContours(out, useful_contours, -1, Scalar(0, 255, 0), 1, LINE_8);
-			for(int i = 0; i < useful_contours.size(); i++) {
-				// mat, point, radius, color, thickness, line_type
-				circle(out, useful_centers[i], 10, Scalar(255, 0, 0), 1, FILLED);
-			}
+			// TODO: open a serial port to talk to the microcontroller for the motors and sensors
 
 			imshow("output", out);
 		}
 		// max 20 fps
-		waitKey(50);
+		waitKey(500);
 	}
 
 	cap.release();

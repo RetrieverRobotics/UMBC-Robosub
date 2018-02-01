@@ -1,16 +1,38 @@
 #include <iostream>
+#include <algorithm>
 
 #include "opencv2/opencv.hpp"
+
+// BGR format
+#define h1_RED Scalar(0, 0, 255)
+#define h1_GREEN Scalar(0, 255, 0)
+#define h1_BLUE Scalar(255, 0, 0)
+#define h1_BLACK Scalar(0, 0, 0)
+#define h1_WHITE Scalar(255, 255, 255)
+#define h1_DARK_GRAY Scalar(100, 100, 100)
+#define h1_LIGHT_GRAY Scalar(180, 180, 180)
+
+#define FRAME_WIDTH 640
+#define FRAME_HEIGHT 480
 
 // INCOMPLETE
 
 class ContourInfo {
 public:
-	ContourInfo(std::vector<cv::Point> _contours, cv::Moments _moments, cv::Point2f _center)
-		: contours(_contours), moments(_moments), center(_center) {}
+	ContourInfo(std::vector<cv::Point> _contour, cv::Moments _moments)
+		: contour(_contour), moments(_moments) {
+			// in, out, epsilon, closed
+			cv::approxPolyDP(contour, approx_poly, 2, true);
+			center = cv::Point2f(moments.m10/moments.m00, moments.m01/moments.m00);
+			bounding_box = cv::boundingRect(approx_poly);
+			min_bounding_box = cv::minAreaRect(approx_poly);
+	}
 
-	std::vector<cv::Point> getContours() {
-		return contours;
+	std::vector<cv::Point> getContour() {
+		return contour;
+	}
+	std::vector<cv::Point> getPoly() {
+		return approx_poly;
 	}
 	cv::Moments getMoments() {
 		return moments;
@@ -18,11 +40,23 @@ public:
 	cv::Point2f getCenter() {
 		return center;
 	}
+	double getArea() {
+		return moments.m00;
+	}
+	cv::Rect getBoundingBox() {
+		return bounding_box;
+	}
+	cv::RotatedRect getMinBoundingBox() {
+		return min_bounding_box;
+	}
 
 private:
-	std::vector<cv::Point> contours;
+	std::vector<cv::Point> contour;
+	std::vector<cv::Point> approx_poly;
 	cv::Moments moments;
 	cv::Point2f center;
+	cv::Rect bounding_box;
+	cv::RotatedRect min_bounding_box;
 };
 
 int main(int argc, char* argv[]) {
@@ -36,11 +70,13 @@ int main(int argc, char* argv[]) {
 		CV_Assert("Stream could not be opened");
 	}
 
-	cap.set(CAP_PROP_FRAME_WIDTH, 640);
-	cap.set(CAP_PROP_FRAME_HEIGHT, 480);
+	cap.set(CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
+	cap.set(CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
 
 	namedWindow("threshold", WINDOW_AUTOSIZE);
 	namedWindow("output", WINDOW_AUTOSIZE);
+	//moveWindow("threshold", -1600, 0);
+	//moveWindow("output", -900, 0);
 
 	Mat in, frame_hsv, frame_filtered, frame_effect, out;
 
@@ -90,30 +126,46 @@ int main(int argc, char* argv[]) {
 					Moments m = moments(contours[i], true); // true for binary image
 
 					// if the area of the contour meets a minimum area requirement
-					// set by the GUI slider, move the contour and the resultant moments
-					// to a new array
+					// set by the GUI slider, save the contour for later processing
 
 					if(m.m00 > area_lower) {
-						Point2f c(m.m10/m.m00, m.m01/m.m00);
-
-						packs.push_back(ContourInfo(contours[i], m, c));
+						packs.push_back(ContourInfo(contours[i], m));
 					}
 				}
 
-				// TODO: sort useful contours by area
-				// may cause incorrect depth -> lock depth with pressure sensor and maintain flat, use only for heading
-				// still may have issues with the pin beyond, but worry about that later
+				sort(packs.begin(), packs.end(),
+					[](ContourInfo lhs, ContourInfo rhs) {
+						// sort largest to smallest
+						return lhs.getArea() > rhs.getArea();
+					}
+				);
 
-				// also, find vertical sections, near ones will have approximately the same top and bottom
-				// limited velocity estimation from stereo app?
-				
-				// hacky but good for now
+				// render the contours, hacky but good for now
 				for(int i = 0; i < packs.size(); i++) {
+					// only draw the first 2
+					if(i == 2) break;
 					vector<vector<Point>> contour_list;
-					contour_list.push_back(packs[i].getContours());
-					// mat, list, index of list (or -1=all), color as BGR, line thickness, line type (4,8,AA)
-					drawContours(out, contour_list, -1, Scalar(0, 255, 0), 1, LINE_8);
-					circle(out, packs[i].getCenter(), 10, Scalar(255, 0, 0), 1, FILLED);
+					contour_list.push_back(packs[i].getPoly());
+
+
+					Rect bounds = packs[i].getBoundingBox();
+					Point bounds_center = (bounds.tl() + bounds.br())*0.5;
+					rectangle(out, bounds.tl(), bounds.br(), h1_BLUE, 1, LINE_4, 0);
+					circle(out, bounds_center, 5, h1_BLUE, 1, FILLED);
+
+					drawContours(out, contour_list, -1, h1_GREEN, 1, LINE_AA);
+					circle(out, packs[i].getCenter(), 10, h1_GREEN, 1, FILLED);
+					
+					// only for largest
+					if(true) {				
+						RotatedRect min_bounds = packs[i].getMinBoundingBox();
+						Point2f min_bounds_points[4];
+						min_bounds.points(min_bounds_points);
+						for(int j = 0; j < 4; j++) {
+							line(out, min_bounds_points[j], min_bounds_points[(j+1)%4], h1_RED, 1, LINE_8);
+						}
+						circle(out, min_bounds.center, 5, h1_RED, 1, FILLED);
+					}
 				}
 
 				
@@ -127,8 +179,7 @@ int main(int argc, char* argv[]) {
 
 			imshow("output", out);
 		}
-		// max 20 fps
-		waitKey(500);
+		waitKey(100);
 	}
 
 	cap.release();

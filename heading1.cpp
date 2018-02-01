@@ -75,8 +75,6 @@ int main(int argc, char* argv[]) {
 
 	namedWindow("threshold", WINDOW_AUTOSIZE);
 	namedWindow("output", WINDOW_AUTOSIZE);
-	//moveWindow("threshold", -1600, 0);
-	//moveWindow("output", -900, 0);
 
 	Mat in, frame_hsv, frame_filtered, frame_effect, out;
 
@@ -84,6 +82,8 @@ int main(int argc, char* argv[]) {
 
 	int area_lower = 0;
 	createTrackbar("Area (L)", "output", &area_lower, 500);
+
+	string debug_text;
 
 	for(;;) {
 		// get a new frame from the video stream and decode it
@@ -117,8 +117,6 @@ int main(int argc, char* argv[]) {
 			findContours(frame_effect, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0));
 
 			if(contours.size() > 0) {
-				string debug_text;
-
 				vector<ContourInfo> packs;
 
 				for(int i = 0; i < contours.size(); i++) {
@@ -133,42 +131,78 @@ int main(int argc, char* argv[]) {
 					}
 				}
 
-				sort(packs.begin(), packs.end(),
-					[](ContourInfo lhs, ContourInfo rhs) {
-						// sort largest to smallest
-						return lhs.getArea() > rhs.getArea();
-					}
-				);
-
-				// render the contours, hacky but good for now
-				for(int i = 0; i < packs.size(); i++) {
-					// only draw the first 2
-					if(i == 2) break;
-					vector<vector<Point>> contour_list;
-					contour_list.push_back(packs[i].getPoly());
-
-					drawContours(out, contour_list, -1, h1_GREEN, 1, LINE_AA);
-					
-					// only for largest
-					if(i == 0) {				
-						RotatedRect min_bounds = packs[i].getMinBoundingBox();
-						Point2f min_bounds_points[4];
-						min_bounds.points(min_bounds_points);
-						for(int j = 0; j < 4; j++) {
-							line(out, min_bounds_points[j], min_bounds_points[(j+1)%4], h1_RED, 1, LINE_8);
+				if(packs.size() > 0) {
+					sort(packs.begin(), packs.end(),
+						[](ContourInfo lhs, ContourInfo rhs) {
+							// sort largest to smallest
+							return lhs.getArea() > rhs.getArea();
 						}
-						circle(out, min_bounds.center, 5, h1_RED, 1, FILLED);
+					);
+
+					Point target_center(FRAME_WIDTH/2, FRAME_HEIGHT/2);
+					// render the contours, hacky but good for now
+					for(int i = 0; i < packs.size(); i++) {
+						// only draw the first 2
+						if(i == 2) break;
+						vector<vector<Point>> contour_list;
+						contour_list.push_back(packs[i].getPoly());
+
+						drawContours(out, contour_list, -1, h1_GREEN, 1, LINE_AA);
+						
+						// only for largest
+						if(i == 0) {				
+							RotatedRect min_bounds = packs[i].getMinBoundingBox();
+							Point2f min_bounds_points[4];
+							min_bounds.points(min_bounds_points);
+							for(int j = 0; j < 4; j++) {
+								line(out, min_bounds_points[j], min_bounds_points[(j+1)%4], h1_RED, 1, LINE_8);
+							}
+							circle(out, min_bounds.center, 5, h1_RED, 1, FILLED);
+							target_center = min_bounds.center;
+						}
 					}
+
+					int tolerance = 7;
+					int half_width = FRAME_WIDTH/2;
+					int half_height = FRAME_HEIGHT/2;
+					int eighth_height = FRAME_HEIGHT/8;
+
+					// cross hairs
+					line(out, Point(0, half_height), Point(FRAME_WIDTH, half_height), h1_WHITE, 1, LINE_4);
+					line(out, Point(half_width, 0), Point(half_width, FRAME_HEIGHT), h1_WHITE, 1, LINE_4);
+					
+					// tolerance lines
+					int tol_top = half_height - eighth_height;
+					int tol_bot = half_height + eighth_height;
+					int tol_left = half_width - tolerance;
+					int tol_right = half_width + tolerance;
+
+					line(out, Point(tol_left, tol_top), Point(tol_left, tol_bot), h1_WHITE, 1, LINE_4);
+					line(out, Point(tol_right, tol_top), Point(tol_right, tol_bot), h1_WHITE, 1, LINE_4);
+
+					//
+					int t_x = target_center.x;
+
+					
+					int diff = t_x - FRAME_WIDTH/2;
+					if(abs(diff) > tolerance) {
+						// heading
+						line(out, Point(t_x, 0), Point(t_x, FRAME_HEIGHT), h1_RED, 2, LINE_4);
+						if(diff > 0) {
+							debug_text = "heading to the right";
+						} else {
+							debug_text = "heading to the left";
+						}
+					} else {
+						debug_text = "on target";
+					}
+				} else {
+					debug_text = "NO TARGET";
 				}
-
-				
-				debug_text += to_string(packs.size());
-
-				putText(out, debug_text, Point(10, 10), FONT_HERSHEY_SIMPLEX, 0.35, Scalar(0,0,0), 1);
-
 			}
 
-			// TODO: open a serial port to talk to the microcontroller for the motors and sensors
+			putText(out, debug_text, Point(10, 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0,0,0), 2);
+
 
 			imshow("output", out);
 		}

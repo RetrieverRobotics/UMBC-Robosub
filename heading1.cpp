@@ -147,17 +147,10 @@ int main(int argc, char* argv[]) {
 					vector<vector<Point>> contour_list;
 					contour_list.push_back(packs[i].getPoly());
 
-
-					Rect bounds = packs[i].getBoundingBox();
-					Point bounds_center = (bounds.tl() + bounds.br())*0.5;
-					rectangle(out, bounds.tl(), bounds.br(), h1_BLUE, 1, LINE_4, 0);
-					circle(out, bounds_center, 5, h1_BLUE, 1, FILLED);
-
 					drawContours(out, contour_list, -1, h1_GREEN, 1, LINE_AA);
-					circle(out, packs[i].getCenter(), 10, h1_GREEN, 1, FILLED);
 					
 					// only for largest
-					if(true) {				
+					if(i == 0) {				
 						RotatedRect min_bounds = packs[i].getMinBoundingBox();
 						Point2f min_bounds_points[4];
 						min_bounds.points(min_bounds_points);

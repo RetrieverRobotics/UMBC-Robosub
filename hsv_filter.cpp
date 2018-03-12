@@ -7,7 +7,7 @@ int main(int argc, char* argv[]) {
 	using namespace cv;
 
 	VideoCapture cap;
-	cap.open(1);
+	cap.open(0);
 
 	if(!cap.isOpened()) {
 		CV_Assert("Cam 1 open failed");

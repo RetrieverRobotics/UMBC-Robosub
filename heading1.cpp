@@ -4,30 +4,28 @@
 #include "opencv2/opencv.hpp"
 
 // BGR format
-#define h1_RED Scalar(0, 0, 255)
-#define h1_GREEN Scalar(0, 255, 0)
-#define h1_BLUE Scalar(255, 0, 0)
-#define h1_BLACK Scalar(0, 0, 0)
-#define h1_WHITE Scalar(255, 255, 255)
-#define h1_DARK_GRAY Scalar(100, 100, 100)
-#define h1_LIGHT_GRAY Scalar(180, 180, 180)
+const cv::Scalar C_RED = cv::Scalar(0, 0, 255);
+const cv::Scalar C_GREEN = cv::Scalar(0, 255, 0);
+const cv::Scalar C_BLUE = cv::Scalar(255, 0, 0);
+const cv::Scalar C_BLACK = cv::Scalar(0, 0, 0);
+const cv::Scalar C_WHITE = cv::Scalar(255, 255, 255);
+const cv::Scalar C_DARK_GRAY = cv::Scalar(100, 100, 100);
+const cv::Scalar C_LIGHT_GRAY = cv::Scalar(180, 180, 180);
 
-#define FRAME_WIDTH 640
-#define FRAME_HEIGHT 480
-
-// INCOMPLETE
+const uint16_t FRAME_WIDTH = 640;
+const uint16_t FRAME_HEIGHT = 480;
 
 class ContourInfo {
 public:
 	ContourInfo(std::vector<cv::Point> _contour, cv::Moments _moments)
-		: contour(_contour), moments(_moments) {
+		: contour(_contour), moments(_moments)
+	{
 			// in, out, epsilon, closed
-			cv::approxPolyDP(contour, approx_poly, 2, true);
-			center = cv::Point2f(moments.m10/moments.m00, moments.m01/moments.m00);
-			bounding_box = cv::boundingRect(approx_poly);
-			min_bounding_box = cv::minAreaRect(approx_poly);
+			approxPolyDP(contour, approx_poly, 2, true);
+			center = Point2f(moments.m10/moments.m00, moments.m01/moments.m00);
+			bounding_box = boundingRect(approx_poly);
+			min_bounding_box = minAreaRect(approx_poly);
 	}
-
 	std::vector<cv::Point> getContour() {
 		return contour;
 	}
@@ -64,7 +62,7 @@ int main(int argc, char* argv[]) {
 	using namespace cv;
 
 	VideoCapture cap;
-	cap.open(0);
+	cap.open(1);
 
 	if(!cap.isOpened()) {
 		CV_Assert("Stream could not be opened");
@@ -140,14 +138,14 @@ int main(int argc, char* argv[]) {
 					);
 
 					Point target_center(FRAME_WIDTH/2, FRAME_HEIGHT/2);
-					// render the contours, hacky but good for now
+					// render the contours
 					for(int i = 0; i < packs.size(); i++) {
 						// only draw the first 2
 						if(i == 2) break;
 						vector<vector<Point>> contour_list;
 						contour_list.push_back(packs[i].getPoly());
 
-						drawContours(out, contour_list, -1, h1_GREEN, 1, LINE_AA);
+						drawContours(out, contour_list, -1, C_GREEN, 1, LINE_AA);
 						
 						// only for largest
 						if(i == 0) {				
@@ -155,39 +153,38 @@ int main(int argc, char* argv[]) {
 							Point2f min_bounds_points[4];
 							min_bounds.points(min_bounds_points);
 							for(int j = 0; j < 4; j++) {
-								line(out, min_bounds_points[j], min_bounds_points[(j+1)%4], h1_RED, 1, LINE_8);
+								line(out, min_bounds_points[j], min_bounds_points[(j+1)%4], C_RED, 1, LINE_8);
 							}
-							circle(out, min_bounds.center, 5, h1_RED, 1, FILLED);
+							// mat, Point center, radius, color, thickness, lineType
+							circle(out, min_bounds.center, 5, C_RED, 1, FILLED);
 							target_center = min_bounds.center;
 						}
 					}
 
-					int tolerance = 7;
+					// guidance line vars
 					int half_width = FRAME_WIDTH/2;
 					int half_height = FRAME_HEIGHT/2;
 					int eighth_height = FRAME_HEIGHT/8;
 
-					// cross hairs
-					line(out, Point(0, half_height), Point(FRAME_WIDTH, half_height), h1_WHITE, 1, LINE_4);
-					line(out, Point(half_width, 0), Point(half_width, FRAME_HEIGHT), h1_WHITE, 1, LINE_4);
+					// render guidance lines
+					line(out, Point(0, half_height), Point(FRAME_WIDTH, half_height), C_WHITE, 1, LINE_4);
+					line(out, Point(half_width, 0), Point(half_width, FRAME_HEIGHT), C_WHITE, 1, LINE_4);
 					
-					// tolerance lines
+					// tolerance line vars
+					int tolerance = 7;
 					int tol_top = half_height - eighth_height;
 					int tol_bot = half_height + eighth_height;
 					int tol_left = half_width - tolerance;
 					int tol_right = half_width + tolerance;
 
-					line(out, Point(tol_left, tol_top), Point(tol_left, tol_bot), h1_WHITE, 1, LINE_4);
-					line(out, Point(tol_right, tol_top), Point(tol_right, tol_bot), h1_WHITE, 1, LINE_4);
+					// render tolerance lines
+					line(out, Point(tol_left, tol_top), Point(tol_left, tol_bot), C_WHITE, 1, LINE_4);
+					line(out, Point(tol_right, tol_top), Point(tol_right, tol_bot), C_WHITE, 1, LINE_4);
 
-					//
-					int t_x = target_center.x;
-
-					
-					int diff = t_x - FRAME_WIDTH/2;
+					// identify direction to head in and render
+					int diff = target_center.x - FRAME_WIDTH/2;
 					if(abs(diff) > tolerance) {
-						// heading
-						line(out, Point(t_x, 0), Point(t_x, FRAME_HEIGHT), h1_RED, 2, LINE_4);
+						line(out, Point(target_center.x, 0), Point(target_center.x, FRAME_HEIGHT), C_RED, 2, LINE_4);
 						if(diff > 0) {
 							debug_text = "heading to the right";
 						} else {
@@ -212,3 +209,36 @@ int main(int argc, char* argv[]) {
 	cap.release();
 	destroyAllWindows();
 }
+
+
+/*
+Mini-Doc
+
+VideoCapture.set()
+VideoCapture.isOpened()
+VideoCapture.grab()
+VideoCapture.retrieve()
+VideoCapture.release()
+
+Mat.empty()
+
+getStructuringElement()
+createTrackbar()
+
+cvtColor()
+inRange()
+dilate()
+
+findContours()
+moments()
+drawContours()
+
+line()
+circle()
+putText()
+
+namedWindow()
+imshow()
+destroyAllWindows()
+
+*/

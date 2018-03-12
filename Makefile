@@ -9,3 +9,6 @@ contour_moments.t:
 
 heading1.t:
 	g++ --std=c++11 `pkg-config --cflags --libs opencv` -o bin/heading1 heading1.cpp
+
+get_path.t:
+	g++ --std=c++11 `pkg-config --cflags --libs opencv` -o bin/get_path get_path.cpp

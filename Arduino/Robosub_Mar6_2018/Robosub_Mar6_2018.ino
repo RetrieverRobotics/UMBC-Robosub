@@ -1,3 +1,5 @@
+#include <PID_v1.h>
+
 #include <Adafruit_BNO055.h>
 
 #include <font_Arial.h>
@@ -25,8 +27,8 @@ class BLThruster {
 
   void update() {
     // pid if implemented, update esc pwm
-    power = (reversed ? -1*power : power);
-    int us = map(power, -100, 100, BLThruster::ESC_MIN, BLThruster::ESC_MAX);
+    int actual_power = (reversed ? -1*power : power);
+    int us = map(actual_power, -100, 100, BLThruster::ESC_MIN, BLThruster::ESC_MAX);
     esc.writeMicroseconds(us);
   }
   
@@ -81,6 +83,10 @@ uint8_t sys, gyro, accel, mag;
 // wiring configured such that (+) is down for vertical, (+) is forward for thrust
 BLThruster vert_fl(3), vert_bl(4), vert_fr(6), vert_br(7), thrust_l(2), thrust_r(5);
 
+double setpoint, input, output;
+double Kp = 1, Ki = 0, Kd = 0;
+PID heading_controller(&input, &output, &setpoint, Kp, Ki, Kd, DIRECT);
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Orientation Sensor Test");
@@ -131,12 +137,12 @@ imu::Vector<3> euler;
 
 unsigned int pwr = 0;
 unsigned int HEADING_MAX_ERROR = 5; // +- degrees
-unsigned int TASK_START_DELAY = 15*1000;
+unsigned int TASK_START_DELAY = 10*1000;
 unsigned int TASK_1_DUR = 10*1000;
-unsigned int TASK_2_DUR = 30*1000;
+unsigned int TASK_2_DUR = 60*1000;
 
 void loop() {
-  int program = getUserInput("Select Program", 4, 0);
+  int program = getUserInput("Select Program", 5, 0);
   delay(1000);
   String str_confirm = "Confirm " + String(program);
   if(program > -1 && getUserInput(str_confirm, 1, 5000) > -1) {
@@ -200,6 +206,15 @@ void loop() {
         euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
         int heading = euler.x();
 
+        setpoint = 0; // error is calculated relative to lock point, so 0 is best error
+        input = 0;
+        output = 0;
+        heading_controller.SetOutputLimits(-100, 100);
+        heading_controller.SetSampleTime(50); // 50 mS between computes
+        heading_controller.SetMode(AUTOMATIC);
+
+        tft.fillScreen(ILI9341_RED);
+
         //while(true) {
         while(millis() - millis_start < TASK_2_DUR) {
           euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
@@ -214,38 +229,28 @@ void loop() {
           } else if(heading_error > 180) {
             heading_error -= 360;
           }
+          
+          input = heading_error;
 
-          Serial.print(" lock:");
-          Serial.print(heading);
-          Serial.print(", yaw:");
-          Serial.print(yaw);
-          Serial.print(", error:");
+          heading_controller.Compute();
+
+          Serial.print("error:");
           Serial.println(heading_error);
+          Serial.print("output:");
+          Serial.println(output);
+
+          thrust_l.setPower(output);
+          thrust_r.setPower(-1*output);
           
-          tft.fillRect(0, 0, 240, 100, ILI9341_BLACK);
-          tft.setCursor(0, 5);
-          tft.print(" error:");
-          tft.println(heading_error);
+          Serial.print("L: ");
+          Serial.print(thrust_l.getPower());
+          Serial.print(" R: ");
+          Serial.println(thrust_r.getPower());
+
+          delay(25);
           
-          if(abs(heading_error) > HEADING_MAX_ERROR) {
-            if(heading_error > 0) {
-              // turn right
-              thrust_l.setPower(pwr);
-              thrust_r.setPower(-1*pwr);
-            } else {
-              // turn left
-              thrust_l.setPower(-1*pwr);
-              thrust_r.setPower(pwr);
-            }
-          } else {
-            // stop motors
-            thrust_l.setPower(0);
-            thrust_r.setPower(0);
-          }
-          String dir = (abs(heading_error) > HEADING_MAX_ERROR ? (heading_error > 0 ? "turn right" : "turn left") : "good");
-          tft.println(dir);
-          delay(50);
         }
+        heading_controller.SetMode(MANUAL);
         // stop motors at end of task
         thrust_l.setPower(0);
         thrust_r.setPower(0);
@@ -274,6 +279,58 @@ void loop() {
         }
         tft.setCursor(0,5);
         tft.println( (success ? " Value changed." : " Canceled.") );
+      }
+        break;
+      case 4:
+      {
+        // pid parameter tunings
+        double delta_opts[] = { -10, -1, -0.1, 0.1, 1, 10 };
+        delay(1000);
+        int delta_opt = getUserInput("Select delta", 6, 5*1000);
+        
+        if(delta_opt > -1) {
+          delay(1000);
+          int multiplier = getUserInput("Select mult", 10, 5*1000);
+
+          if(multiplier > 0) { // multiplying by zero wouldn't do anything...
+            delay(1000);
+            int param = getUserInput("Select param", 3, 5*1000);
+          
+            if(param > -1) {
+              delay(1000);
+              
+              float val = multiplier*delta_opts[delta_opt];
+              
+              String msg = "Confirm: " + String(val) + " ?";
+              if(getUserInput(msg, 1, 5*1000) > -1) {
+                switch(param) {
+                  case 0:
+                    Kp += val;
+                    Kp = constrain(Kp, 0, 5);
+                    break;
+                  case 1:
+                    Ki += val;
+                    Ki = constrain(Ki, 0, 20);
+                    break;
+                  case 2:
+                    Kd += val;
+                    Kd = constrain(Kd, 0, 20);
+                    break;
+                }
+                tft.setCursor(0, 5);
+                tft.print(" ");
+                tft.print(Kp);
+                tft.print(" ");
+                tft.print(Ki);
+                tft.print(" ");
+                tft.print(Kd);
+                heading_controller.SetTunings(Kp, Ki, Kd);
+  
+                delay(3000);
+              }
+            }
+          }
+        }
       }
         break;
     }

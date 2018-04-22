@@ -71,6 +71,10 @@ const int BLThruster::ESC_RANGE = BLThruster::ESC_MAX - BLThruster::ESC_HALF;
 
 ILI9341_t3 tft = ILI9341_t3(TFT_CS, TFT_DC);
 
+// light sensor: http://www.everlight.com/file/ProductFile/ALS-PDIC144-6C-L378.pdf
+// sensor(+) => 3.3V
+// sensor(-) => 100k resistor, analog_read
+// 100k resistor => GND
 #define SENSOR_LIGHT (15)
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
@@ -84,7 +88,7 @@ uint8_t sys, gyro, accel, mag;
 BLThruster vert_fl(3), vert_bl(4), vert_fr(6), vert_br(7), thrust_l(2), thrust_r(5);
 
 double setpoint, input, output;
-double Kp = 1, Ki = 0, Kd = 0;
+double Kp = 0.5, Ki = 0, Kd = 0.1;
 PID heading_controller(&input, &output, &setpoint, Kp, Ki, Kd, DIRECT);
 
 void setup() {
@@ -284,7 +288,7 @@ void loop() {
       case 4:
       {
         // pid parameter tunings
-        double delta_opts[] = { -10, -1, -0.1, 0.1, 1, 10 };
+        double delta_opts[] = { -1, -0.1, -0.01, 0.01, 0.1, 1 };
         delay(1000);
         int delta_opt = getUserInput("Select delta", 6, 5*1000);
         
@@ -306,15 +310,15 @@ void loop() {
                 switch(param) {
                   case 0:
                     Kp += val;
-                    Kp = constrain(Kp, 0, 5);
+                    //Kp = constrain(Kp, 0, 5);
                     break;
                   case 1:
                     Ki += val;
-                    Ki = constrain(Ki, 0, 20);
+                    //Ki = constrain(Ki, 0, 20);
                     break;
                   case 2:
                     Kd += val;
-                    Kd = constrain(Kd, 0, 20);
+                    //Kd = constrain(Kd, 0, 20);
                     break;
                 }
                 tft.setCursor(0, 5);

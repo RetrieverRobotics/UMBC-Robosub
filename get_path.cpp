@@ -114,8 +114,9 @@ int main(int argc, char* argv[]) {
 	cap.set(CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
 	cap.set(CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
 
+	namedWindow("dilate", WINDOW_AUTOSIZE);
 	namedWindow("output", WINDOW_AUTOSIZE);
-	moveWindow("output", -800, 0);
+	//moveWindow("output", -800, 0);
 
 	Mat in, frame_hsv, frame_threshold, frame_dilate, out;
 
@@ -132,8 +133,8 @@ int main(int argc, char* argv[]) {
 
 			cvtColor(in, frame_hsv, COLOR_BGR2HSV);
 
-			//inRange(frame_hsv, Scalar(2, 111, 100), Scalar(18, 255, 255), frame_threshold);
-			inRange(frame_hsv, Scalar(99, 72, 144), Scalar(115, 255, 199), frame_threshold);
+			inRange(frame_hsv, Scalar(2, 111, 100), Scalar(18, 255, 255), frame_threshold);
+			//inRange(frame_hsv, Scalar(99, 72, 144), Scalar(115, 255, 199), frame_threshold);
 
 			dilate(frame_threshold, frame_dilate, kernel_dilate);
 
@@ -247,10 +248,12 @@ int main(int argc, char* argv[]) {
 
 						Line2 match = *(possible_matches[match_index]);
 
-						// build centerline, make sure points that get averaged are the closer ones
-						if(Line2::dist(target.getP1(), match.getP2()) < Line2::dist(target.getP1(), match.getP1())) {
-							match.swapPoints(); // so ideally the lines would be facing the same direction?!
-						}
+						// so now we have two lines which are near parallel, of similar lengths, but possibly facing in opposite directions.
+						// force the lines to have positive angles, both so that centerlines calculate correctly, and to be predictable
+						if(target.getAngle() < 0) target.swapPoints();
+						if(match.getAngle() < 0) match.swapPoints();
+
+						// build centerline
 						center_lines.push_back( Line2(
 							Line2::midpoint(target.getP1(), match.getP1()),
 							Line2::midpoint(target.getP2(), match.getP2())
@@ -263,16 +266,8 @@ int main(int argc, char* argv[]) {
 
 				if(!center_lines.empty()) {
 
-					// try to connect lines point to point
-					/*
-					go through all the lines, check every point against every other point to see if it is near enough
-					flag lines with close endpoints
-					discard lines that haven't been flagged (ie the troublesome extras)
-					attempt to construct a waypoint set from the lines by projecting lines with close endpoints and calculating intersection point
-						this is to cover for when up close the points are separated by a bunch of space
-					*/
-
-					// discard any lines (ahead) which don't fit
+					// try to connect lines point to point, returns a set of points ordered from one end of the path to the other
+					// preferably bottom-most endpoint first
 
 #ifdef DRAW_PATH
 					// draw each line and its endpoint
@@ -292,10 +287,11 @@ int main(int argc, char* argv[]) {
 			rectangle(out, Point(0,0), Point(500, 20), C_WHITE, CV_FILLED);
 			putText(out, debug_text, Point(10,10), FONT_HERSHEY_SIMPLEX, 0.35, C_BLACK, 1);
 #endif
+			imshow("dilate", frame_dilate);
 			imshow("output", out);
 		}
 
-		waitKey(20);
+		waitKey(100);
 	}
 
 	cap.release();

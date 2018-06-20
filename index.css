@@ -1,11 +1,14 @@
-@import url('https://fonts.googleapis.com/css?family=Vesper+Libre');
+@import url('https://fonts.googleapis.com/css?family=Scope+One');
 
 
-* { font-family: 'Vesper Libre', sans-serif; }
+* { font-family: 'Scope One', sans-serif; }
 .titleContainer { 
   display: flex;
   flex-direction: row; 
   justify-content: center; 
   align-items: center; 
 }
-.titleContainer div { font-size:64px; }
+.titleContainer div { 
+  font-size:64px; 
+  margin-top:64px;
+}

@@ -38,7 +38,6 @@ public:
 	const RunType getRunType();
 
 	void launch(bool skip_init = false);
-	void skipInit(void);
 	std::tuple<ReturnStatus, std::string> update(void);
 	void kill(bool reset_state = true);
 

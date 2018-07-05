@@ -18,9 +18,6 @@ void Task::launch(bool skip_init) {
 	state = Task::State::Running;
 	update();
 }
-void Task::skipInit(void) {
-	if(run_type == Task::RunType::Init) run_type = Task::RunType::Normal;
-}
 std::tuple<Task::ReturnStatus, std::string> Task::update(void) {
 	return task_function(*this);
 }

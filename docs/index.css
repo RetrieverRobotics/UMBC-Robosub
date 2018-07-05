@@ -1,0 +1,9 @@
+@import url('https://fonts.googleapis.com/css?family=Rubik');
+
+* { font-family: 'Rubik', Verdana, sans-serif; }
+.titleContainer { 
+  display: flex;
+  flex-direction: row; 
+  justify-content: center; 
+  align-items: center; 
+}

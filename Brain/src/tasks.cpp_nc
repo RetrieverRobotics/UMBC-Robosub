@@ -1,0 +1,76 @@
+#include <string>
+#include <tuple>
+
+#include "Task.hpp"
+
+/*
+Example function
+
+std::tuple<Task::ReturnStatus, std::string> f_TaskXXX(Task& task) {
+	switch(task.getRunType()) {
+		case Task::RunType::Init:
+			break;
+		case Task::RunType::Normal:
+			break;
+		case Task::RunType::Stop:
+			break;
+	}
+
+	return std::make_tuple(Task::ReturnStatus::Continue, "");
+}
+*/
+
+
+namespace task_function {
+	std::tuple<Task::ReturnStatus, std::string> f_TaskQualifierGateEntry(Task& task) {
+		switch(task.getRunType()) {
+			case Task::RunType::Init:
+				break;
+			case Task::RunType::Normal:
+				break;
+			case Task::RunType::Stop:
+				break;
+		}
+
+		return std::make_tuple(Task::ReturnStatus::Continue, "");
+	}
+
+	std::tuple<Task::ReturnStatus, std::string> f_TaskQualifierPin(Task& task) {
+		switch(task.getRunType()) {
+			case Task::RunType::Init:
+				break;
+			case Task::RunType::Normal:
+				break;
+			case Task::RunType::Stop:
+				break;
+		}
+
+		return std::make_tuple(Task::ReturnStatus::Continue, "");
+	}
+
+	std::tuple<Task::ReturnStatus, std::string> f_TaskQualifierGateExit(Task& task) {
+		switch(task.getRunType()) {
+			case Task::RunType::Init:
+				break;
+			case Task::RunType::Normal:
+				break;
+			case Task::RunType::Stop:
+				break;
+		}
+
+		return std::make_tuple(Task::ReturnStatus::Continue, "");
+	}
+
+	std::tuple<Task::ReturnStatus, std::string> f_TaskSurfaceAndWait(Task& task) {
+		switch(task.getRunType()) {
+			case Task::RunType::Init:
+				break;
+			case Task::RunType::Normal:
+				break;
+			case Task::RunType::Stop:
+				break;
+		}
+
+		return std::make_tuple(Task::ReturnStatus::Continue, "");
+	}
+}

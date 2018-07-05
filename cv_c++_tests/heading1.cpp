@@ -22,7 +22,7 @@ public:
 	{
 			// in, out, epsilon, closed
 			approxPolyDP(contour, approx_poly, 2, true);
-			center = Point2f(moments.m10/moments.m00, moments.m01/moments.m00);
+			center = cv::Point2f(moments.m10/moments.m00, moments.m01/moments.m00);
 			bounding_box = boundingRect(approx_poly);
 			min_bounding_box = minAreaRect(approx_poly);
 	}
@@ -97,7 +97,8 @@ int main(int argc, char* argv[]) {
 
 			// apply a threshold filter that outputs a binary image
 			// values selected using hsv_filter.cpp
-			inRange(frame_hsv, Scalar(2, 111, 100), Scalar(18, 255, 255), frame_filtered);
+			//inRange(frame_hsv, Scalar(2, 111, 100), Scalar(18, 255, 255), frame_filtered);
+			inRange(frame_hsv, Scalar(0, 0, 0), Scalar(20, 255, 2500), frame_filtered);
 
 			// make the white parts bigger
 			// not strictly needed, but seems to help a little in lower light

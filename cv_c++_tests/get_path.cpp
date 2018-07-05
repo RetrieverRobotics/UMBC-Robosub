@@ -6,10 +6,14 @@
 
 #include "opencv2/opencv.hpp"
 
+// this program likes to have the entire path visible, taking up ~30% or more of the view (otherwise detail is trashed by the dilate)
+
 // uncomment these to enable various layers of the debug draw
 //#define DRAW_CONTOUR_POINTS
-#define DRAW_PATH_OUTLINE
+//#define DRAW_CONTOUR_APPROX
 //#define DRAW_COMPARISONS
+#define DRAW_CENTERLINES
+#define DRAW_ENDPOINTS
 #define DRAW_PATH
 #define DRAW_INFO
 
@@ -94,8 +98,29 @@ private:
 
 std::string Line2::type = "Line2";
 
-// short to long
-bool compareLength(Line2 &first, Line2 &second) {
+bool samePoint(cv::Point p1, cv::Point p2) {
+	if(p1.x == p2.x && p1.y == p2.y) return true;
+	return false;
+}
+
+// a point... linked to a line, makes copies for portability
+class SmartPoint {
+public:
+	SmartPoint(cv::Point _point, Line2 _line) : point(_point), line(_line) {}
+
+	cv::Point getPoint(void) { return point; }
+	cv::Point getOtherPoint(void) {
+		if(samePoint(line.getP1(), point)) return line.getP2();
+		return line.getP1();
+	}
+	Line2 getLine(void) { return line; }
+private:
+	cv::Point point;
+	Line2 line;
+};
+
+// long to 
+bool longerFirst(Line2 &first, Line2 &second) {
 	if(first.getLength() > second.getLength()) return true;
 	return false;
 }
@@ -190,9 +215,9 @@ int main(int argc, char* argv[]) {
 				}
 
 				// sort from long to short, long gets first chance as target
-				boundary_lines.sort(compareLength);
+				boundary_lines.sort(longerFirst);
 
-#ifdef DRAW_PATH_OUTLINE
+#ifdef DRAW_CONTOUR_APPROX
 				// draw each line and its endpoints
 				for(list<Line2>::iterator i = boundary_lines.begin(); i != boundary_lines.end(); ++i) {
 					// line
@@ -202,7 +227,7 @@ int main(int argc, char* argv[]) {
 				}
 #endif
 				
-				vector<Line2> center_lines;
+				list<Line2> center_lines;
 
 				// limit execution to number of pairs available or 4, whichever is smaller
 				int possible_sections = boundary_lines.size()/2;
@@ -266,19 +291,56 @@ int main(int argc, char* argv[]) {
 
 				if(!center_lines.empty()) {
 
-					// try to connect lines point to point, returns a set of points ordered from one end of the path to the other
-					// preferably bottom-most endpoint first
-
-#ifdef DRAW_PATH
+					center_lines.sort(longerFirst);
+#ifdef DRAW_CENTERLINES
 					// draw each line and its endpoint
 					debug_text += to_string(center_lines.size());
-					for(int i = 0; i < center_lines.size(); i++) {
-						// line
-						line(out, center_lines[i].getP1(), center_lines[i].getP2(), C_WHITE, 1);
-						// circle at each endpoint
-						circle(out, center_lines[i].getP1(), 5, C_BLUE);
-						circle(out, center_lines[i].getP2(), 5, C_GREEN);
+					for(list<Line2>::iterator i = center_lines.begin(); i != center_lines.end(); ++i) {
+						line(out, i->getP1(), i->getP2(), C_WHITE, 1);
+						circle(out, i->getP1(), 5, C_BLUE);
+						circle(out, i->getP2(), 5, C_GREEN);
 					}
+#endif
+
+					// try to connect lines point to point, returns a set of points ordered from one end of the path to the other
+					vector<cv::Point> waypoints;
+
+					vector<SmartPoint> seed_points;
+					for(list<Line2>::iterator i = center_lines.begin(); i != center_lines.end(); ++i) {
+						seed_points.push_back(SmartPoint(i->getP1(), *i));
+						seed_points.push_back(SmartPoint(i->getP2(), *i));
+					}
+
+					if(seed_points.size() > 2) {
+						float max_dist = 0;
+						int indexes[2];
+						for(int i = 0; i < seed_points.size(); i++) {
+							for(int j = 1; j < seed_points.size(); j++) {
+								float dist = Line2::dist(seed_points[i].getPoint(), seed_points[j].getPoint());
+								if(dist > max_dist) {
+									max_dist = dist;
+									indexes[0] = i;
+									indexes[1] = j;
+								}
+							}
+						}
+#ifdef DRAW_ENDPOINTS
+						line(out, seed_points[indexes[0]].getPoint(), seed_points[indexes[1]].getPoint(), C_BLACK, 1);
+						circle(out, seed_points[indexes[0]].getPoint(), 10, C_RED);
+						circle(out, seed_points[indexes[0]].getOtherPoint(), 10, C_LIGHT_GRAY);
+#endif
+
+						// A. get the other point from that line and minimize distance to next point
+						// B. export the average position of these two points, set point of second line as seed, discard points from first line from consideration
+						// Go to A. until there are no remaining lines
+						// export remaining point on line
+					} else {
+						// just sort it to put the first one at the bottom
+					}
+
+					
+#ifdef DRAW_PATH
+					// draw path
 #endif
 				}
 				
@@ -291,7 +353,7 @@ int main(int argc, char* argv[]) {
 			imshow("output", out);
 		}
 
-		waitKey(100);
+		waitKey(1000);
 	}
 
 	cap.release();

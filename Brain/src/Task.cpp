@@ -1,11 +1,7 @@
 #include "Task.hpp"
 
-Task::Task(std::string _instance_name,
-	std::tuple<ReturnStatus, std::string> (* _task_function)(Task& task),
-	ActionManager& _action_manager) :
-		task_function(_task_function),
-		action_manager(_action_manager),
-		NamedClass("Task", _instance_name)
+Task::Task(std::string _instance_name, ActionManager& _action_manager)
+	: action_manager(_action_manager), NamedClass("Task", _instance_name)
 {
 	state = State::Stopped;
 	run_type = RunType::Init;
@@ -17,9 +13,6 @@ void Task::launch(bool skip_init) {
 	if(skip_init) run_type = Task::RunType::Normal; else run_type = Task::RunType::Init;
 	state = Task::State::Running;
 	update();
-}
-std::tuple<Task::ReturnStatus, std::string> Task::update(void) {
-	return task_function(*this);
 }
 void Task::kill(bool reset_state) {
 	run_type = Task::RunType::Stop;

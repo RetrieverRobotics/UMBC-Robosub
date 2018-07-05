@@ -29,25 +29,22 @@ public:
 	};
 	static const std::string ReturnMsg[];
 
-	Task(std::string _instance_name,
-		std::tuple<ReturnStatus, std::string> (* _task_function)(Task& task),
-		ActionManager& _action_manager);
-
+	Task(std::string _instance_name, ActionManager& _action_manager);
 
 	const State getState();
 	const RunType getRunType();
 
 	void launch(bool skip_init = false);
-	std::tuple<ReturnStatus, std::string> update(void);
+
+	typedef std::tuple<ReturnStatus, std::string> task_return_t;
+	virtual task_return_t update(void) = 0;
+	
 	void kill(bool reset_state = true);
 
-private:
+protected:
 	ActionManager& action_manager;
-	std::tuple<ReturnStatus, std::string> (* task_function)(Task& task);
 	State state;
 	RunType run_type;
-
-	// also need a way to store persistent results data from actions between task runs
 };
 
 #endif

@@ -6,22 +6,25 @@
 #include "ActionManager.hpp"
 #include "TaskManager.hpp"
 
-#include "tasks.cpp_nc"
+#include "DerivedTasks.hpp"
 
 using namespace std;
-using namespace task_function;
 
 int main(int argc, char* argv[]) {
 	ActionManager action_manager;
 
-	TaskManager task_manager(action_manager);
+	TaskManager task_manager;
 
 	cout << task_manager.getFullName() << endl;
 
-	task_manager.registerTask("QualifierGateEntry", f_TaskQualifierGateEntry);
-	task_manager.registerTask("QualifierPin", f_TaskQualifierPin);
-	task_manager.registerTask("QualifierGateExit", f_TaskQualifierGateExit);
-	task_manager.registerTask("SurfaceAndWait", f_TaskSurfaceAndWait);
+	Task* qge = new QualifierGateEntry(action_manager);
+	task_manager.registerTask(*qge);
+
+	cout << qge->getFullName() << endl;
+
+	task_manager.registerTask(*(new QualifierPin(action_manager)));
+	task_manager.registerTask(*(new QualifierGateExit(action_manager)));
+	task_manager.registerTask(*(new SurfaceAndWait(action_manager)));
 
 	task_manager.onStart("QualifierGateEntry, DoesNotExist");
 	task_manager.onBlock("SurfaceAndWait");

@@ -1,10 +1,10 @@
 #include "TaskManager.hpp"
 
-TaskManager::TaskManager(ActionManager& _action_manager) : action_manager(_action_manager), NamedClass("TaskManager") {
+TaskManager::TaskManager() : NamedClass("TaskManager") {
 }
 
-void TaskManager::registerTask(std::string instance_name, std::tuple< Task::ReturnStatus, std::string > (* task_function)(Task& task)) {
-	tasks.insert( { instance_name, *(new Task(instance_name, task_function, action_manager)) } );
+void TaskManager::registerTask(Task& task) {
+	tasks.insert( { task.getInstanceName(), task } );
 }
 
 void TaskManager::onStart(const std::string& task_list) {

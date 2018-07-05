@@ -9,15 +9,14 @@
 #include <regex>
 
 #include "NamedClass.hpp"
-#include "ActionManager.hpp"
 #include "Task.hpp"
 #include "string_util.hpp"
 
 class TaskManager : public NamedClass {
 public:
-	explicit TaskManager(ActionManager& _action_manager);
+	TaskManager();
 
-	void registerTask(std::string, std::tuple< Task::ReturnStatus, std::string > (*)(Task& task) );
+	void registerTask(Task&);
 	// void registerTasks(std::tuple<std::string, std::tuple< Task::ReturnStatus, std::string > (*)(void) >; // as variadic function
 	void onStart(const std::string&);
 	void onBlock(const std::string&);
@@ -33,8 +32,6 @@ public:
 	std::string listTasks();
 
 private:
-
-	ActionManager& action_manager;
 	std::vector<std::string> tags_start;
 	std::vector<std::string> tags_block;
 	std::unordered_map<std::string, Task&> tasks;

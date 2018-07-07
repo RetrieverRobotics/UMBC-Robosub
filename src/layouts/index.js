@@ -22,9 +22,7 @@ const Layout = ({ children, data }) => (
         // padding: '0px 1.0875rem 1.45rem',
         paddingTop: 0,
         position:'relative',
-        margin:'0',
-
-
+        margin:0,
       }}
     >
       <Header siteTitle={data.site.siteMetadata.title} />

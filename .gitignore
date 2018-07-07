@@ -1,3 +1,8 @@
-bin/
+# Project dependencies
+.cache
+node_modules
+yarn-error.log
 
-.clang_complete
+# Build directory
+/public
+.DS_Store

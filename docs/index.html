@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>UMBC RoboSub 2018</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="./img/favicon.ico" />    
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="index.css">
+  </head>
+
+  <div id="nonFooterContainer"> 
+    <input id="toggle" type="checkbox"/>
+
+      <label class="hamburger" for="toggle">
+        <div class="top"></div>
+        <div class="meat"></div>
+        <div class="bottom"></div>
+      </label>
+
+    
+    <div class="nav">
+      <div class="nav-wrapper">
+        <nav>
+          <a href="/">home</a>
+          <a href="#">blog</a> 
+        </nav>
+      </div>
+    </div>
+    <header class="toggleMenuBar">
+      <h1 for="toggle" id="toggleTitle" class="display-1" style="color:#ffcc00;font-size:160px;margin-top:22px;line-height:auto;"><b>UMBC RoboSub 2018</b></h1>
+    </header>
+  </div>
+    <div class="container-fluid nonFooter" style="padding-left:0px; padding-right:0px;">
+      <img src="img/bg.png" />
+    </div>
+
+  <div class="footerStuff container-fluid">
+    <div id="footerImages">
+      <img src="/img/RoboSub.png" href="http://www.robonation.org/competition/robosub" alt="RoboSub" height="90" width="90" />
+      <img src="/img/RR.PNG" alt="Retriever Robotics" height="90" width="90" />
+      <img src="/img/UMBC-horizontal-color.png" href="https://www.umbc.edu/" alt="UMBC" height="90"  />
+    </div>
+    <div id="footerLove">
+      Built with  <span style="color: #e25555;padding-left:6px;padding-right:6px;"> &hearts; </span>  and <span class="fa fa-coffee" style="color:#654321;padding-left:6px;padding-right:6px;"></span> in Charm City.
+    </div>
+  </div>
+
+  <!-- Optional JavaScript: jQuery first, then Popper.js, then Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+<script>
+$(document).ready(function(){
+  $('#toggle').change(function(){
+    
+    if (this.checked) { $('#toggleTitle').hide(); }
+    else { $('#toggleTitle').show(); }
+  });
+});
+</script>
+
+</html>

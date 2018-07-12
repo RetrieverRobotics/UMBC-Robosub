@@ -13,14 +13,11 @@
 
   <div id="nonFooterContainer"> 
     <input id="toggle" type="checkbox"/>
-
-      <label class="hamburger" for="toggle">
-        <div class="top"></div>
-        <div class="meat"></div>
-        <div class="bottom"></div>
-      </label>
-
-    
+    <label class="hamburger" for="toggle">
+      <div class="top"></div>
+      <div class="meat"></div>
+      <div class="bottom"></div>
+    </label>
     <div class="nav">
       <div class="nav-wrapper">
         <nav>
@@ -39,12 +36,12 @@
 
   <div class="footerStuff container-fluid">
     <div id="footerImages">
-      <img src="img/robosub.jpg" href="http://www.robonation.org/competition/robosub" alt="RoboSub" height="90" width="90" />
-      <img src="img/rr.jpg" alt="Retriever Robotics" height="90" width="90" />
-      <img src="img/umbc-horizontal-color.jpg" href="https://www.umbc.edu/" alt="UMBC" height="90"  />
+      <a href="http://www.robonation.org/competition/robosub"><img src="img/robosub.jpg" alt="RoboSub" height="90" width="90" /></a>
+      <a href="https://www.facebook.com/RetrieverRobotics/"><img src="img/rr.jpg" alt="Retriever Robotics" height="90" width="90" /></a>
+      <a href="https://www.umbc.edu/"><img src="img/umbc-horizontal-color.jpg" alt="UMBC" height="90"  /></a>
     </div>
     <div id="footerLove">
-      Built with  <span style="color: #e25555;padding-left:6px;padding-right:6px;"> &hearts; </span>  and <span class="fa fa-coffee" style="color:#654321;padding-left:6px;padding-right:6px;"></span> in Charm City.
+      Built with  <span style="color: #e25555;padding-left:6px;padding-right:6px;"> &hearts; </span>  and <span class="fa fa-coffee" style="color:#654321;padding-left:6px;padding-right:6px;"></span> in <a href="https://en.wikipedia.org/wiki/Baltimore" style="color:black;padding-left:6px;padding-right:6px;">Charm City.</a>
     </div>
   </div>
 
@@ -53,14 +50,29 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 
-<script>
-$(document).ready(function(){
-  $('#toggle').change(function(){
+  <script>
+    $(document).ready(function() {
+      var viewportWidth = $(window).width();
+      var viewportHeight = $(window).height();
+      
+      $('#toggle').change(function(){
+        if (this.checked) { $('#toggleTitle').hide(); }
+        else { 
+          $('#toggleTitle').show();         
+        }
+      });
+
+      function getViewport() {
+        var viewportWidth = $(window).width();
+        var viewportHeight = $(window).height();
+        $('#viewport').html('Viewport: '+viewportWidth+' x '+viewportHeight+' px');
+      }
+
+      getViewport();
+
+      $(window).resize(function() { getViewport() });
     
-    if (this.checked) { $('#toggleTitle').hide(); }
-    else { $('#toggleTitle').show(); }
-  });
-});
-</script>
+    });
+  </script>
 
 </html>

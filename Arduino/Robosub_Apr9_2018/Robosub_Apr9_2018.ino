@@ -11,7 +11,7 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
 // motor controller wrapper
 #include "BLThruster.h"
 
-BLThruster vert_fl(3), vert_bl(4), vert_fr(6), vert_br(7), thrust_l(2), thrust_r(5);
+BLThruster vert_fl(3), vert_bl(4), vert_fr(6), vert_br(7, true), thrust_l(2), thrust_r(5);
 
 // TFT
 #include <font_Arial.h>
@@ -49,6 +49,10 @@ double pitch_Kp = 0, pitch_Ki = 0, pitch_Kd = 0;
 PID pitch_controller(&pitch_in, &pitch_out, &pitch_set, pitch_Kp, pitch_Ki, pitch_Kd, REVERSE);
 float target_pitch = 0;
 
+double roll_set, roll_in, roll_out;
+double roll_Kp = 0, roll_Ki = 0, roll_Kd = 0;
+PID roll_controller(&roll_in, &roll_out, &roll_set, roll_Kp, roll_Ki, roll_Kd, REVERSE);
+float target_roll = 0;
 //
 struct sensor_data_struct {
   float water_pressure, water_temp;
@@ -89,12 +93,16 @@ void setup() {
   depth_controller.SetOutputLimits(-100,100);
   depth_controller.SetSampleTime(50);
   pitch_controller.SetMode(MANUAL);
-  pitch_controller.SetOutputLimits(-100,100);
+  pitch_controller.SetOutputLimits(-30,30);
   pitch_controller.SetSampleTime(50);
+  roll_controller.SetMode(MANUAL);
+  roll_controller.SetOutputLimits(-30,30);
+  roll_controller.SetSampleTime(50);
 
   yaw_set = 0;
   depth_set = 0;
   pitch_set = 0;
+  roll_set = 0;
 
   Serial.println("BOOT Finished.");
 }
@@ -141,6 +149,10 @@ void loop() {
     pitch_controller.SetTunings(pitch_Kp, pitch_Ki, pitch_Kd);
     pitch_in = target_pitch - sensor_data.e_orientation.y();
     if(pitch_in < -180) pitch_in += 360; else if(pitch_in > 180) pitch_in -= 360;
+
+    roll_controller.SetTunings(roll_Kp, roll_Ki, roll_Kd);
+    roll_in = target_roll - sensor_data.e_orientation.z();
+    if(roll_in < -180) roll_in += 360; else if(roll_in > 180) roll_in -= 360;
     
     depth_controller.SetTunings(depth_Kp, depth_Ki, depth_Kd);
     depth_in = target_pressure - sensor_data.water_pressure; // similar to above, input is error
@@ -149,6 +161,7 @@ void loop() {
     yaw_controller.Compute();
     depth_controller.Compute();
     pitch_controller.Compute();
+    roll_controller.Compute();
     
     // update motor outputs
     thrust_l.setPower(yaw_out);
@@ -156,7 +169,9 @@ void loop() {
 
     // eventually these will be a combination of 3 PIDs to stabilize against pitch and roll
     // but for now, the motors act together from the depth_controller
-    // pitch_out gets applied across the front and rear motor pairs
+    // pitch_out gets applied across the front and rear motor pairs, Y gets more negative as bow tilts down
+    // roll_out gets applied across the left and right motor pairs, Z gets more negative as rolled CW (as if driver)
+    // tune these after examining +/- from sensor
     vert_fl.setPower(depth_out);
     vert_bl.setPower(depth_out);
     vert_fr.setPower(depth_out);
@@ -200,8 +215,9 @@ void parseCommand(String cmd) {
           if(args[1].equals("read")) {
             msg = "CMD pid.read ->\n";
             msg += String("\tpid.yaw: ") + yaw_Kp + ", " + yaw_Ki + ", " + yaw_Kd + "\n";
-            msg += String("\tpid.depth: ") + depth_Kp + ", " + depth_Ki + ", " + depth_Kd;
-            msg += String("\tpid.pitch: ") + pitch_Kp + ", " + pitch_Ki + ", " + pitch_Kd;
+            msg += String("\tpid.depth: ") + depth_Kp + ", " + depth_Ki + ", " + depth_Kd + "\n";
+            msg += String("\tpid.pitch: ") + pitch_Kp + ", " + pitch_Ki + ", " + pitch_Kd + "\n";
+            msg += String("\tpid.roll: ") + roll_Kp + ", " + roll_Ki + ", " + roll_Kd;
             Serial.println(msg);
             
           } else {
@@ -210,6 +226,7 @@ void parseCommand(String cmd) {
               yaw_controller.SetMode(MANUAL);
               depth_controller.SetMode(MANUAL);
               pitch_controller.SetMode(MANUAL);
+              roll_controller.SetMode(MANUAL);
               msg = Serial.println("CMD pid.all -> disabled");
             }
           }
@@ -236,7 +253,11 @@ void parseCommand(String cmd) {
                 pitch_Ki = tunings[1].toFloat();
                 pitch_Kd = tunings[2].toFloat();
                 msg = String("CMD pid.pitch -> p = ") + pitch_Kp + ", i = " + pitch_Ki + ", d = " + pitch_Kd; Serial.println(msg);
-
+              } else if(args[1].equals("roll")) {
+                roll_Kp = tunings[0].toFloat();
+                roll_Ki = tunings[1].toFloat();
+                roll_Kd = tunings[2].toFloat();
+                msg = String("CMD pid.roll -> p = ") + roll_Kp + ", i = " + roll_Ki + ", d = " + roll_Kd; Serial.println(msg);
               }
             }
 
@@ -256,6 +277,10 @@ void parseCommand(String cmd) {
               } else if(args[1].equals("pitch")) {
                 pitch_controller.SetMode(mode);
                 msg = String("CMD pid.pitch -> ") + (mode > 0 ? "enabled" : "disabled"); Serial.println(msg);
+              
+              } else if(args[1].equals("roll")) {
+                roll_controller.SetMode(mode);
+                msg = String("CMD pid.rol -> ") + (mode > 0 ? "enabled" : "disabled"); Serial.println(msg);
               }
             }
           }
@@ -312,6 +337,15 @@ void parseCommand(String cmd) {
             } else {
               target_pitch = args[2].toFloat();
               msg = "CMD config.pitch -> Target pitch set to " + String(target_pitch); Serial.println(msg);
+            }
+          } else if(args[1].equals("roll")) {
+            if(args[2].equals("lock")) {
+              target_roll = sensor_data.e_orientation.z();
+              msg = "CMD config.roll -> Acquired roll lock: " + String(target_roll); Serial.println(msg);
+          
+            } else {
+              target_roll = args[2].toFloat();
+              msg = "CMD config.roll -> Target roll set to " + String(target_roll); Serial.println(msg);
             }
           }
         } else {
@@ -397,10 +431,12 @@ void EStop() {
   yaw_controller.SetMode(MANUAL);
   depth_controller.SetMode(MANUAL);
   pitch_controller.SetMode(MANUAL);
+  roll_controller.SetMode(MANUAL);
   // zero pid outputs
   yaw_out = 0;
   depth_out = 0;
   pitch_out = 0;
+  roll_out = 0;
 
   Serial.println("CMD Emergency stop activated");
 }

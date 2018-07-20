@@ -1,0 +1,190 @@
+[ Commands are blocked together when they Must be performed together.
+In general, this is the recommended order however only blocks are critical ]
+[ If you get errors along the lines of 'XXX' has no installation candidate,
+try running 'sudo apt-get update' ]
+
+Copy Berryboot to a FAT formatted SD card and install Raspbian Lite 2018.03 (Stretch)
+
+sudo apt-get update
+	update repositories
+sudo apt-get -y dist-upgrade
+	update system
+
+sudo apt-get install xorg
+	install x11
+sudo apt-get install fluxbox
+	install fluxbox wm
+	modify keys, init, windowmenu, etc to suit
+
+sudo passwd pi
+	change password of 'pi' to 'umbcrobosub:dive!'
+
+sudo cp /etc/hosts /etc/hosts.bkp
+	backup the hosts file
+sudo nano /etc/hosts
+	'127.0.1.1 raspberrypi' -> '127.0.1.1 umbc-orca'
+sudo cp /etc/hostname /etc/hostname.bkp
+	backup the hostname file
+sudo nano /etc/hostname
+	'raspberrypi' -> 'umbc-orca' (as from hosts)
+reboot
+
+sudo apt-get install avahi-daemon
+	install avahi-daemon for .local domain sharing on local network
+
+sudo apt-get install htop
+	colorful performance monitor similar to top
+
+sudo raspi-config
+	enable SSH in 'Interfacing Options'
+
+sudo apt-get install realvnc-vnc-server
+[https://www.stuffaboutcode.com/2012/06/raspberry-pi-run-program-at-start-up.html]
+sudo nano /etc/init.d/vncserver
+	create init script (contents to be found below this block inside ```)
+sudo chmod 755 /etc/init.d/vncserver
+	make init script executable
+sudo /etc/init.d/vncserver start
+	test start
+sudo /etc/init.d/vncserver stop
+	test stop
+sudo update-rc.d vncserver defaults
+[To remove]
+sudo update-rc.d -f vncserver remove
+
+```
+#! /bin/bash
+# /etc/init.d/vncserver
+
+### BEGIN INIT INFO
+# Provides:		vncserver
+# Required-Start:	$named $syslog
+# Required-Stop:	$named $syslog
+# Default-Start:	2 3 4 5
+# Default-Stop:		0 1 6
+# Short-Description:	Starting RealVNC vncserver...
+# Description:		Start a RealVNC vnc server on hostname:N at boot. More than one session can be virtualized. N starts at 1 and increases from there.
+### END INIT INFO
+
+case "$1" in
+	start)
+		echo "Starting new vncserver instance."
+		su pi -c "bash -c '/usr/bin/vncserver | grep -i \"new desktop is\"'"
+		;;
+	stop)
+		echo "Stopping all vncserver instances."
+		killall vncserver
+		;;
+	status)
+		NUM_INSTANCES=$(sudo ps -ef | grep -v grep | grep vncserver$ -c)
+		if [ "$NUM_INSTANCES" -eq 0 ]; then
+			echo "No RealVNC server instances are running."
+		elif [ "$NUM_INSTANCES" -eq 1 ]; then
+			echo "1 RealVNC server instance is running."
+		else
+			echo "$NUM_INSTANCES RealVNC server instances are running."
+		fi
+		;;
+	*)
+		echo "Usage: /etc/init.d/vncserver {start|stop}"
+		exit 1
+		;;
+esac
+
+exit 0
+```
+
+[ To access the vnc server from a remote computer, install VNC Viewer
+from RealVNC. The aforementioned init script ensures that a vncserver
+instance is running after boot on :1. Additional instances can be started with
+'sudo /etc/init.d/vncserver start' and 'sudo /etc/init.d/vncserver status'
+will list the number of running instances. In general, the new desktop
+will be created at hostname:N and can be killed using 'vncserver -kill :N' ]
+[ Assuming the avahi and hostname steps have been performed,
+the pi can be accessed by starting a new connection to 'umbc-orca.local:N'
+Login using the default 'pi' user and the current password for that user. ]
+[ Additional features for more efficient rendering in some cases may be 
+enabled according to the instructions here:
+https://www.raspberrypi.org/documentation/remote-access/vnc/ ]
+[ If running Viewer on Mac especially, be sure to go to preferences
+and configure Super and Alt correctly. ]
+
+[OPENCV]
+[ from: https://www.alatortsev.com/2018/04/27/installing-opencv-on-raspberry-pi-3-b/ ]
+
+[dependencies]
+sudo apt-get install -y build-essential cmake pkg-config
+sudo apt-get install -y libjpeg-dev libtiff5-dev libjasper-dev libpng12-dev
+sudo apt-get install -y libavcodec-dev libavformat-dev libswscale-dev libv4l-dev
+sudo apt-get install -y libxvidcore-dev libx264-dev
+sudo apt-get install -y libgtk2.0-dev libgtk-3-dev
+sudo apt-get install -y libatlas-base-dev gfortran
+
+[source]
+[ latest version @July16,2018 is 3.4.2 ]
+cd ~
+wget -O opencv.zip https://github.com/opencv/opencv/archive/3.4.2.zip
+wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/3.4.2.zip
+unzip opencv.zip
+unzip opencv_contrib.zip
+
+[ Intel Thread Build Blocks may increase performance for threadable
+functions by up to 30% but there is some additional effort required.
+I am leaving a link here for whoever ends up attempting this in the 
+future:
+https://www.theimpossiblecode.com/blog/intel-tbb-on-raspberry-pi/ ]
+
+[compile]
+cd ~/opencv-3.4.2/
+mkdir build
+cd build
+cmake -D CMAKE_BUILD_TYPE=RELEASE \
+	-D CMAKE_INSTALL_PREFIX=/usr/local \
+	-D OPENCV_EXTRA_MODULES_PATH=~/opencv_contrib-3.4.2/modules \
+	-D BUILD_EXAMPLES=ON ..
+	[The '\' is only necessary if using the multiline format ]
+sudo nano /etc/dphys-swapfile
+	comment out CONF_SWAPSIZE and add new entry with 1024 for duration of compile
+sudo /etc/init.d/dphys-swapfile restart
+	restart swap service to load new swapsize
+make -j4
+	compile using 4 cores
+sudo make install
+sudo ldconfig
+sudo apt-get update
+sudo nano/etc/dphys-swapfile
+	comment recent entry and uncomment the 100 entry
+reboot
+
+[ Optionally build Textadept from source ]
+[ Optionally install dmenu and hook into fluxbox keys ]
+
+sudo apt-get install picocom
+	console serial terminal - sends as entered
+	requires additional configuration regarding the newline
+
+sudo apt-get install cutecom
+	gui serial terminal - line-based send?
+	configure logfile for ~/.cutecom/log.txt
+
+[ Optionally install Dillo and uzbl - both graphical web browsers, but
+Dillo uses very little memory vs uzbl is a full webkit embed ]
+
+sudo apt-get install git
+	version control tool
+[ Clone the code repository into some convenient directory near ~ ]
+
+[ Optionally install keynav for keyboard only control of GUI ]
+sudo apt-get install keynav
+
+[ Download the Arduino IDE for Linux ARM
+Extract the tar.xz with tar xvf to /usr/local/share/.
+Symlink arduino and arduino-builder from there to /usr/local/bin/
+Open Arduino, set the sketchbook folder and adjust other preferences
+as necessary. In the current system, the pi user is already in the
+dialout group. ]
+[ Download the Teensyduino package from pjrc.com and make executable
+with chmod u+x _file_ .
+Install the udev rules (as documented on the Teensyduino install page),
+and run the installer. Select the extracted arduino install
+in /usr/local/share as the installation target. ]

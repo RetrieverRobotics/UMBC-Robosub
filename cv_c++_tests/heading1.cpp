@@ -2,6 +2,10 @@
 #include <algorithm>
 
 #include "opencv2/opencv.hpp"
+#include <opencv2/core/utility.hpp>
+#include "opencv2/imgproc.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
 
 // BGR format
 const cv::Scalar C_RED = cv::Scalar(0, 0, 255);
@@ -137,6 +141,13 @@ int main(int argc, char* argv[]) {
 							return lhs.getArea() > rhs.getArea();
 						}
 					);
+					
+					
+					//Adaptive Thresholding
+					Mat gray;
+					cvtColor(out, gray, COLOR_BGR2GRAY);
+					//(src, dst, maxValue, adaptiveMethod, thresholdType, blockSize, C)
+					adaptiveThreshold(gray, out, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 21, 2);
 
 					Point target_center(FRAME_WIDTH/2, FRAME_HEIGHT/2);
 					// render the contours

@@ -55,6 +55,12 @@ double roll_Kp = 0, roll_Ki = 0, roll_Kd = 0;
 PID roll_controller(&roll_in, &roll_out, &roll_set, roll_Kp, roll_Ki, roll_Kd, REVERSE);
 float target_roll = 0;
 float roll_multiplier = 1;
+
+const float PILOT_STEP_YAW = 45;
+const float PILOT_STEP_PRESSURE = 5;
+
+float thrust_base = 0, pilot_jump_thrust = 45;
+
 //
 struct sensor_data_struct {
   float water_pressure, water_temp;
@@ -80,7 +86,7 @@ uint32_t log_nav_prev_millis = 0;
 uint16_t log_nav_delay = 200;
 
 void setup() {
-  
+
   Serial.begin(115200); // Teensy always run 12Mbit / sec
   while(!Serial.dtr()) { delay(10); };
   pinMode(13, OUTPUT);
@@ -89,7 +95,7 @@ void setup() {
   setupPeripherals(); // IMU, TFT, MS5803 (pressure)
 
   yaw_controller.SetMode(MANUAL);
-  yaw_controller.SetOutputLimits(-100,100);
+  yaw_controller.SetOutputLimits(-50,50);
   yaw_controller.SetSampleTime(50);
   depth_controller.SetMode(MANUAL);
   depth_controller.SetOutputLimits(-100,100);
@@ -127,7 +133,7 @@ void loop() {
   sensor_data.e_orientation = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
   log();
-  
+
   // get serial input
   uint16_t char_count = 0;
   while(Serial.available() > 0 && char_count < MAX_CHARS_PER_LOOP) {
@@ -140,9 +146,9 @@ void loop() {
       cmd += c;
     }
   }
-  
-  if(ctrl_mode == MODE_CTRL_AUTO) {
-  
+
+//  if(ctrl_mode == MODE_CTRL_AUTO) {
+
     // update motion controllers with new inputs
     yaw_controller.SetTunings(yaw_Kp, yaw_Ki, yaw_Kd);
     yaw_in = target_heading - sensor_data.e_orientation.x(); // compute an error, yaw_set will always be 0
@@ -155,19 +161,19 @@ void loop() {
     roll_controller.SetTunings(roll_Kp, roll_Ki, roll_Kd);
     roll_in = target_roll - sensor_data.e_orientation.z();
     if(roll_in < -180) roll_in += 360; else if(roll_in > 180) roll_in -= 360;
-    
+
     depth_controller.SetTunings(depth_Kp, depth_Ki, depth_Kd);
     depth_in = target_pressure - sensor_data.water_pressure; // similar to above, input is error
-    
+
     // allow PID to compute
     yaw_controller.Compute();
     depth_controller.Compute();
     pitch_controller.Compute();
     roll_controller.Compute();
-    
+
     // update motor outputs
-    thrust_l.setPower(yaw_out);
-    thrust_r.setPower(yaw_out*-1);
+    thrust_l.setPower(thrust_base + yaw_out);
+    thrust_r.setPower(thrust_base + yaw_out*-1);
 
     // mix outputs of depth, pitch, and roll into vertical motors
     // this simple approach works reasonably well as long as the sub is intended to be flat (ie 0* targets for pitch and roll)
@@ -176,7 +182,7 @@ void loop() {
     vert_bl.setPower(depth_out + (pitch_multiplier*pitch_out) + (roll_multiplier*roll_out));
     vert_fr.setPower(depth_out - (pitch_multiplier*pitch_out) - (roll_multiplier*roll_out));
     vert_br.setPower(depth_out + (pitch_multiplier*pitch_out) - (roll_multiplier*roll_out));
-  }
+//  }
 
   delay(10); // 10 here + 20 depth read + bno read + serial parse <= 50 mS PID compute, hopefully
 }
@@ -186,15 +192,15 @@ void loop() {
  * pid:stop         2  disable all loops, doesn't stop motors
  * pid:x:dp,di,dd  3  set all three values in one command, comma-seperated
  * pid:read
- * 
+ *
  * thr:stop  turn off all thrusters !!! this won't do anything useful unless pid is also disabled
  * thr:pilot   enter pilot mode, send a 'q' to exit, still line-based, so press enter to make stuff happen
  *  q    i
  *    j  k  l
  *       ,
- * 
+ *
  * log:sensors/imu_cal/thr:nav:start/stop
- * 
+ *
  * stop 1
  * //translate:x/y:duration
  * //rotate:z:delta_angle
@@ -219,7 +225,7 @@ void parseCommand(String cmd) {
             msg += String("\tpid.pitch: ") + pitch_Kp + ", " + pitch_Ki + ", " + pitch_Kd + "\n";
             msg += String("\tpid.roll: ") + roll_Kp + ", " + roll_Ki + ", " + roll_Kd;
             Serial.println(msg);
-            
+
           } else {
             // disable all controllers
             if(args[1].equals("stop")) {
@@ -277,7 +283,7 @@ void parseCommand(String cmd) {
               } else if(args[1].equals("pitch")) {
                 pitch_controller.SetMode(mode);
                 msg = String("CMD pid.pitch -> ") + (mode > 0 ? "enabled" : "disabled"); Serial.println(msg);
-              
+
               } else if(args[1].equals("roll")) {
                 roll_controller.SetMode(mode);
                 msg = String("CMD pid.rol -> ") + (mode > 0 ? "enabled" : "disabled"); Serial.println(msg);
@@ -287,7 +293,7 @@ void parseCommand(String cmd) {
         } else {
           Serial.println(ERR_BAD_SYNTAX);
         }
-        
+
       } else if(args[0].equals("thr")) {
         if(num_args == 2) {
           if(args[1].equals("pilot")) {
@@ -317,7 +323,10 @@ void parseCommand(String cmd) {
               msg = "CMD config.yaw -> Acquired heading lock: " + String(target_heading); Serial.println(msg);
 
             } else {
-              target_heading = args[2].toFloat();
+              float new_val = args[2].toFloat();
+              char sign = args[2].charAt(0);
+              if(sign == '+' || sign == '-') target_heading += new_val; else target_heading = new_val;
+
               msg = "CMD config.yaw -> Target heading set to " + String(target_heading); Serial.println(msg);
             }
           } else if(args[1].equals("depth")) {
@@ -326,7 +335,9 @@ void parseCommand(String cmd) {
               msg = "CMD config.depth -> Acquired depth lock: " + String(target_pressure) + " mbar"; Serial.println(msg);
 
             } else {
-              target_pressure = args[2].toFloat();
+              float new_val = args[2].toFloat();
+              char sign = args[2].charAt(0);
+              if(sign == '+' || sign == '-') target_pressure += new_val; else target_pressure = new_val;
               msg = "CMD config.depth -> Target pressure set to " + String(target_pressure) + " mbar"; Serial.println(msg);
             }
           } else if(args[1].equals("pitch")) {
@@ -337,22 +348,26 @@ void parseCommand(String cmd) {
             } else if(args[2].equals("invert")) {
               pitch_multiplier *= -1;
               msg = "CMD config.pitch -> Inverted pitch multiplier, new value: " + String(pitch_multiplier); Serial.println(msg);
-            
+
             } else {
-              target_pitch = args[2].toFloat();
+              float new_val = args[2].toFloat();
+              char sign = args[2].charAt(0);
+              if(sign == '+' || sign == '-') target_pitch += new_val; else target_pitch = new_val;
               msg = "CMD config.pitch -> Target pitch set to " + String(target_pitch); Serial.println(msg);
             }
           } else if(args[1].equals("roll")) {
             if(args[2].equals("lock")) {
               target_roll = sensor_data.e_orientation.z();
               msg = "CMD config.roll -> Acquired roll lock: " + String(target_roll); Serial.println(msg);
-          
+
             }  else if(args[2].equals("invert")) {
               roll_multiplier *= -1;
               msg = "CMD config.roll -> Inverted roll multiplier, new value: " + String(roll_multiplier); Serial.println(msg);
-            
+
             } else {
-              target_roll = args[2].toFloat();
+              float new_val = args[2].toFloat();
+              char sign = args[2].charAt(0);
+              if(sign == '+' || sign == '-') target_roll += new_val; else target_roll = new_val;
               msg = "CMD config.roll -> Target roll set to " + String(target_roll); Serial.println(msg);
             }
           }
@@ -383,7 +398,7 @@ void parseCommand(String cmd) {
         } else {
           Serial.println(ERR_BAD_SYNTAX);
         }
-        
+
       } else if(args[0].equals("stop") || args[0].equals("quit") || args[0].equals("exit") || args[0].equals("x") || args[0].equals("X")) {
         EStop();
 
@@ -393,28 +408,31 @@ void parseCommand(String cmd) {
     }
   } else if(ctrl_mode == MODE_CTRL_PILOT) {
     if(num_args > 0) {
-      int linear_power = 30;
-      int rotation_power = 20;
       if(args[0].equals("i")) {
-        thrust_l.setPower(linear_power);
-        thrust_r.setPower(linear_power);
+        if(thrust_base > 0)
+          pilot_jump_thrust = 70;
+
+        thrust_base = pilot_jump_thrust;
         Serial.println("CMD pilot.Forward");
       } else if(args[0].equals(",")) {
-        thrust_l.setPower(-1*linear_power);
-        thrust_r.setPower(-1*linear_power);
+        if(thrust_base < 0)
+          pilot_jump_thrust = 70;
+
+        thrust_base = -1*pilot_jump_thrust;
         Serial.println("CMD pilot.Reverse");
       } else if(args[0].equals("k")) {
-        thrust_l.setPower(0);
-        thrust_r.setPower(0);
+        thrust_base = 0;
         Serial.println("CMD pilot.Stop");
       } else if(args[0].equals("j")) {
-        thrust_l.setPower(-1*rotation_power);
-        thrust_r.setPower(rotation_power);
+        target_heading += PILOT_STEP_YAW;
         Serial.println("CMD pilot.Left");
       } else if(args[0].equals("l")) {
-        thrust_l.setPower(rotation_power);
-        thrust_r.setPower(-1*rotation_power);
+        target_heading -= PILOT_STEP_YAW;
         Serial.println("CMD pilot.Right");
+      } else if(args[0].equals("h")){
+        target_pressure -= PILOT_STEP_PRESSURE;
+      } else if(args[0].equals("m")){
+        target_pressure += PILOT_STEP_PRESSURE;
       } else if(args[0].equals("q")) {
         thrust_l.setPower(0);
         thrust_r.setPower(0);
@@ -473,12 +491,12 @@ void log() {
       msg = String("INFO roll pid: roll_set = ") + roll_set + " roll_in = " + roll_in + " roll_out = " + roll_out; Serial.println(msg);
     }
   }
-  
+
   if(log_imu_cal) {
     if(now > log_imu_cal_prev_millis + log_imu_cal_delay) {
       log_imu_cal_prev_millis = now; something_logged = true;
       bno.getCalibration(&sys, &gyro, &accel, &mag); // this blocks the entire program if it fails to get the data
-      msg = String("INFO Imu: Sys = ") + sys + ", Gyro = " + gyro + ", Accel = " 
+      msg = String("INFO Imu: Sys = ") + sys + ", Gyro = " + gyro + ", Accel = "
         + accel + ", Mag = " + mag; Serial.println(msg);
     }
   }

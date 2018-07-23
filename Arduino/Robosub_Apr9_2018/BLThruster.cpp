@@ -25,7 +25,8 @@ void BLThruster::setReverse(bool _reversed) {
 }
 
 void BLThruster::setPower(int8_t _power) {
-  power = _power;
+  //power = _power;
+  power = constrain(_power, -100, 100);
 
   // update esc pwm
   int8_t actual_power = (reversed ? -1*power : power);

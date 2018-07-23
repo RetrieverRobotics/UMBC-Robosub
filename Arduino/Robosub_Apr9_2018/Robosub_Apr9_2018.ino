@@ -11,7 +11,7 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
 // motor controller wrapper
 #include "BLThruster.h"
 
-BLThruster vert_fl(3), vert_bl(4), vert_fr(6), vert_br(7, true), thrust_l(2), thrust_r(5);
+BLThruster vert_fl(3), vert_bl(4), vert_fr(6), vert_br(7), thrust_l(2), thrust_r(5);
 
 // TFT
 #include <font_Arial.h>
@@ -48,11 +48,13 @@ double pitch_set, pitch_in, pitch_out;
 double pitch_Kp = 0, pitch_Ki = 0, pitch_Kd = 0;
 PID pitch_controller(&pitch_in, &pitch_out, &pitch_set, pitch_Kp, pitch_Ki, pitch_Kd, REVERSE);
 float target_pitch = 0;
+float pitch_multiplier = 1;
 
 double roll_set, roll_in, roll_out;
 double roll_Kp = 0, roll_Ki = 0, roll_Kd = 0;
 PID roll_controller(&roll_in, &roll_out, &roll_set, roll_Kp, roll_Ki, roll_Kd, REVERSE);
 float target_roll = 0;
+float roll_multiplier = 1;
 //
 struct sensor_data_struct {
   float water_pressure, water_temp;
@@ -167,15 +169,13 @@ void loop() {
     thrust_l.setPower(yaw_out);
     thrust_r.setPower(yaw_out*-1);
 
-    // eventually these will be a combination of 3 PIDs to stabilize against pitch and roll
-    // but for now, the motors act together from the depth_controller
-    // pitch_out gets applied across the front and rear motor pairs, Y gets more negative as bow tilts down
-    // roll_out gets applied across the left and right motor pairs, Z gets more negative as rolled CW (as if driver)
-    // tune these after examining +/- from sensor
-    vert_fl.setPower(depth_out);
-    vert_bl.setPower(depth_out);
-    vert_fr.setPower(depth_out);
-    vert_br.setPower(depth_out);
+    // mix outputs of depth, pitch, and roll into vertical motors
+    // this simple approach works reasonably well as long as the sub is intended to be flat (ie 0* targets for pitch and roll)
+    // the multipliers were included to make it easy to determine which direction the motors had to act - I'll leave it for the moment
+    vert_fl.setPower(depth_out - (pitch_multiplier*pitch_out) + (roll_multiplier*roll_out));
+    vert_bl.setPower(depth_out + (pitch_multiplier*pitch_out) + (roll_multiplier*roll_out));
+    vert_fr.setPower(depth_out - (pitch_multiplier*pitch_out) - (roll_multiplier*roll_out));
+    vert_br.setPower(depth_out + (pitch_multiplier*pitch_out) - (roll_multiplier*roll_out));
   }
 
   delay(10); // 10 here + 20 depth read + bno read + serial parse <= 50 mS PID compute, hopefully
@@ -334,6 +334,10 @@ void parseCommand(String cmd) {
               target_pitch = sensor_data.e_orientation.y();
               msg = "CMD config.pitch -> Acquired pitch lock: " + String(target_pitch); Serial.println(msg);
 
+            } else if(args[2].equals("invert")) {
+              pitch_multiplier *= -1;
+              msg = "CMD config.pitch -> Inverted pitch multiplier, new value: " + String(pitch_multiplier); Serial.println(msg);
+            
             } else {
               target_pitch = args[2].toFloat();
               msg = "CMD config.pitch -> Target pitch set to " + String(target_pitch); Serial.println(msg);
@@ -343,6 +347,10 @@ void parseCommand(String cmd) {
               target_roll = sensor_data.e_orientation.z();
               msg = "CMD config.roll -> Acquired roll lock: " + String(target_roll); Serial.println(msg);
           
+            }  else if(args[2].equals("invert")) {
+              roll_multiplier *= -1;
+              msg = "CMD config.roll -> Inverted roll multiplier, new value: " + String(roll_multiplier); Serial.println(msg);
+            
             } else {
               target_roll = args[2].toFloat();
               msg = "CMD config.roll -> Target roll set to " + String(target_roll); Serial.println(msg);
@@ -462,6 +470,7 @@ void log() {
       msg = String("INFO yaw pid: yaw_set = ") + yaw_set + " yaw_in = " + yaw_in + " yaw_out = " + yaw_out; Serial.println(msg);
       msg = String("INFO depth pid: depth_set = ") + depth_set + " depth_in = " + depth_in + " depth_out = " + depth_out; Serial.println(msg);
       msg = String("INFO pitch pid: pitch_set = ") + pitch_set + " pitch_in = " + pitch_in + " pitch_out = " + pitch_out; Serial.println(msg);
+      msg = String("INFO roll pid: roll_set = ") + roll_set + " roll_in = " + roll_in + " roll_out = " + roll_out; Serial.println(msg);
     }
   }
   

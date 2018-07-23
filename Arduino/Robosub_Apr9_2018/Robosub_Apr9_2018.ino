@@ -57,9 +57,12 @@ float target_roll = 0;
 float roll_multiplier = 1;
 
 const float PILOT_STEP_YAW = 45;
-const float PILOT_STEP_PRESSURE = 5;
+const float PILOT_STEP_PRESSURE = 10;
+const float PILOT_STEP_THRUST = 30;
+const float PILOT_BASE_LIM = 80;
 
-float thrust_base = 0, pilot_jump_thrust = 45;
+float thrust_base = 0;
+float pilot_jump_thrust = 45;
 
 //
 struct sensor_data_struct {
@@ -297,8 +300,7 @@ void parseCommand(String cmd) {
       } else if(args[0].equals("thr")) {
         if(num_args == 2) {
           if(args[1].equals("pilot")) {
-            EStop();
-            ctrl_mode = MODE_CTRL_PILOT;
+            startPilot();
             Serial.println("CMD thr -> Entering pilot mode...");
 
           } else if(args[1].equals("stop")) {
@@ -409,33 +411,37 @@ void parseCommand(String cmd) {
   } else if(ctrl_mode == MODE_CTRL_PILOT) {
     if(num_args > 0) {
       if(args[0].equals("i")) {
-        if(thrust_base > 0)
-          pilot_jump_thrust = 70;
-
-        thrust_base = pilot_jump_thrust;
-        Serial.println("CMD pilot.Forward");
+        if(thrust_base > 0) {
+          if(abs(thrust_base) < PILOT_BASE_LIM) thrust_base += PILOT_STEP_THRUST;
+        } else {
+          thrust_base = pilot_jump_thrust;
+        }
+        thrust_base = constrain(thrust_base, 0, PILOT_BASE_LIM);
+        Serial.print("CMD pilot.Forward @ "); Serial.println(thrust_base);
       } else if(args[0].equals(",")) {
-        if(thrust_base < 0)
-          pilot_jump_thrust = 70;
-
-        thrust_base = -1*pilot_jump_thrust;
-        Serial.println("CMD pilot.Reverse");
+        if(thrust_base < 0) {
+          if(abs(thrust_base) < PILOT_BASE_LIM) thrust_base -= PILOT_STEP_THRUST;
+        } else {
+          thrust_base = -1*pilot_jump_thrust;
+        }
+        thrust_base = constrain(thrust_base, -1*PILOT_BASE_LIM, 0);
+        Serial.print("CMD pilot.Reverse @ "); Serial.println(thrust_base);
       } else if(args[0].equals("k")) {
         thrust_base = 0;
         Serial.println("CMD pilot.Stop");
       } else if(args[0].equals("j")) {
         target_heading += PILOT_STEP_YAW;
-        Serial.println("CMD pilot.Left");
+        Serial.print("CMD pilot.Left -> "); Serial.println(target_heading);
       } else if(args[0].equals("l")) {
         target_heading -= PILOT_STEP_YAW;
-        Serial.println("CMD pilot.Right");
-      } else if(args[0].equals("h")){
+        Serial.print("CMD pilot.Right -> "); Serial.println(target_heading);
+      } else if(args[0].equals("u")){
         target_pressure -= PILOT_STEP_PRESSURE;
+        Serial.print("CMD pilot.Ascend -> "); Serial.println(target_pressure);
       } else if(args[0].equals("m")){
         target_pressure += PILOT_STEP_PRESSURE;
+        Serial.print("CMD pilot.Descend -> "); Serial.println(target_pressure);
       } else if(args[0].equals("q")) {
-        thrust_l.setPower(0);
-        thrust_r.setPower(0);
         ctrl_mode = MODE_CTRL_AUTO;
         Serial.println("CMD pilot -> Exiting pilot mode...");
       } else {
@@ -443,6 +449,20 @@ void parseCommand(String cmd) {
       }
     }
   }
+}
+
+void startPilot() {
+  // lock depth
+  parseCommand("config:depth:lock");
+  // 0 the outputs
+  yaw_out = depth_out = pitch_out = roll_out = 0;
+  // set automatic mode on the controllers
+  yaw_controller.SetMode(AUTOMATIC);
+  depth_controller.SetMode(AUTOMATIC);
+  pitch_controller.SetMode(AUTOMATIC);
+  roll_controller.SetMode(AUTOMATIC);
+
+  ctrl_mode = MODE_CTRL_PILOT;
 }
 
 void EStop() {

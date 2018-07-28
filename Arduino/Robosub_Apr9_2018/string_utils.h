@@ -7,6 +7,7 @@ namespace str_util {
   // assumptions:
   // input string has at least one character, that character is not the delimiting character
   void split(String str, char delim, std::vector<String>& tokens) {
+    tokens.clear(); // remove existing contents if there is any
     if(str.length() > 0) {
       str += delim; // a hack such that the last section is captured
       uint16_t prev_index = 0;

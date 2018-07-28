@@ -6,6 +6,8 @@
 class BLThruster {
 public:
   BLThruster(uint8_t, bool = false);
+  // default constructor needed in order to use [] type access for STL containers
+  BLThruster();
 
   void setReverse(bool);
 

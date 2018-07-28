@@ -19,6 +19,8 @@ BLThruster::BLThruster(uint8_t _pwm_pin, bool _reversed) {
 
   reversed = _reversed;
 }
+// default constructor - see note in header, not recommended for use
+BLThruster::BLThruster() : BLThruster(0) {}
 
 void BLThruster::setReverse(bool _reversed) {
   reversed = _reversed;

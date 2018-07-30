@@ -307,6 +307,58 @@ void EStop() {
 	Serial.println("CMD Emergency stop activated. Send 'SAFE' to reset.");
 }
 
+//		 ###   #   #   ###    ###   #  #          #   #  #####  #      ####
+//		#   #  #   #    #    #   #  # #           #   #  #      #      #   #
+//		#   #  #   #    #    #      ##            #####  ####   #      ####
+//		#   #  #   #    #    #   #  # #           #   #  #      #      #
+//		 ###    ###    ###    ###   #  #          #   #  #####  #####  #
+//		   ##
+
+void printHelp(void) {
+	msg = 
+		"Quick help:\n"
+		"* ? represents a valid string tag in the context\n"
+		"* _ represents a number\n"
+		"* / indicates a set of available options\n"
+		"\n"
+		"if op_mode == Disabled:\n"
+		"  SAFE\n"
+		"if op_mode == Enabled:\n"
+		"  ESTOP\n"
+		"  help\n"
+		"  if i_mode == Config\n"
+		"    * Separator is currently set to ' ' (space) although ':' (colon) is shown here\n"
+		"    pid:?:lock\n"
+		"    pid:?:_\n"
+		"    pid:?:+/-_\n"
+		"    pid:?:read\n"
+		"    pid:?:tune:_,_,_\n"
+		"    pid:?:tune:read\n"
+		"    pid:tune:read\n"
+		"    pid:?:start/stop\n"
+		"    pid:start/stop\n"
+		"    thrust:_\n"
+		"    thrust:stop\n"
+		"    vars:?mode:?field:_\n"
+		"    vars:?mode:?field:read\n"
+		"    vars:?mode:read\n"
+		"    log:?:start/stop\n"
+		"    log:stop\n"
+		"    mode:pilot/pilot_/test\n"
+		"    stop/exit/quit/q/x\n"
+		"  if i_mode == Pilot || Pilot_OnChar\n"
+		"    keymap:\n"
+		"    qQ  u      i\n"
+		"           jJ  k  Ll\n"
+		"        m      ,\n"
+		"  if i_mode == Test\n"
+		"    ?\n"
+		"    stop/x\n"
+		"    quit/exit\n"
+	;
+	Serial.println(msg);
+}
+
 
 //		 ###    ###   #   #  #   #    #    #   #  ####          ####    ###    ###    ####
 //		#   #  #   #  ## ##  ## ##   # #   ##  #  #   #         #   #  #   #  #   #  #
@@ -420,7 +472,13 @@ void parseCommand(String cmd) {
 			break;
 
 		case mode::Enabled:
-			if(cmd.equals("ESTOP")) EStop();
+			if(cmd.equals("ESTOP")) {
+				EStop();
+				return;
+			} else if(cmd.equals("help")) {
+				printHelp();
+				return;
+			}
 
 
 //		#  #   ##   ###   ####         ###   ##   #  #  ####  ###    ###

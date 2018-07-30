@@ -1,6 +1,5 @@
 //https://forum.pjrc.com/threads/40813-Teensy-3-5-3-6-Breakouts-Available-Now-Discount-for-PJRC-Forum-Members
 
-// Further development of this program can be found in Robosub_Jul28_2018
 // Text Banners were generated using pyfiglet with the fonts clr6x6 and clr5x6 (inside functions)
 
 // Builds successfully with Arduino 1.8.0 and Teensyduino 1.34
@@ -82,16 +81,25 @@ float thrust_base = 0;
 
 // Pilot Mode behavior variables
 std::map<String, float> pilot_vars = {
-	{ "jump_thrust", 25 },
-	{ "step_thrust", 20 },
-	{ "jump_yaw", 30 },
-	{ "step_yaw", 5 },
-	{ "step_pressure", 10 },
-	{ "lim_base", 80 }
+		
 };
 
 std::map<String, float> test_vars {
-	{ "power", 20 }
+	
+};
+
+std::map<String, std::map<String, float>> mode_vars = {
+	{ "pilot", {
+		{ "jump_thrust", 25 },
+		{ "step_thrust", 20 },
+		{ "jump_yaw", 30 },
+		{ "step_yaw", 5 },
+		{ "step_pressure", 10 },
+		{ "lim_base", 80 }
+	}},
+	{ "test", {
+		{ "power", 20 }
+	}}
 };
 
 // global struct to hold sensor data in one place
@@ -336,13 +344,13 @@ op_mode == Enabled
 		pid:?:start/stop ~ starts or stops a single controller
 		pid:start/stop   ~ starts or stops all controllers
 		
-		pilot:?:_     ~ set value of a variable in pilot_vars
-		pilot:?:read  ~ print single variable
-		pilot:read    ~ print all variables
+		vars:pilot:?:_     ~ set value of a variable in pilot_vars
+		vars:pilot:?:read  ~ print single variable
+		vars:pilot:read    ~ print all variables
 
-		test:?:_      ~ identical configuration to pilot
-		test:?:read
-		test:read
+		vars:test:?:_      ~ identical configuration to pilot
+		vars:test:?:read
+		vars:test:read
 
 		log:?:start/stop  ~ start or stop the logging of a set of information
 		log:stop          ~ stop all logging
@@ -352,7 +360,7 @@ op_mode == Enabled
 
 		stop/exit/quit/q/x  ~ runs makeSafe()
 
-	i_mode == Pilot || Pilot_OnChar [op_mode == Enabled]
+	i_mode == Pilot || Pilot_OnChar
 		* values prefixed by 'step' are intended to be less than values prefixed by 'jump'
 		* by default, a new line must be sent between commands which is supported by any terminal
 		however the OnChar variation will process each character as it arrives and ignore the newline
@@ -415,11 +423,11 @@ void parseCommand(String cmd) {
 			if(cmd.equals("ESTOP")) EStop();
 
 
-// 	#  #   ##   ###   ####         ###   ##   #  #  ####  ###    ###
-// 	####  #  #  #  #  #           #     #  #  ## #  #      #    #
-// 	####  #  #  #  #  ###         #     #  #  # ##  ###    #    # ##
-// 	#  #  #  #  #  #  #           #     #  #  #  #  #      #    #  #
-// 	#  #   ##   ###   ####         ###   ##   #  #  #     ###    ###
+//		#  #   ##   ###   ####         ###   ##   #  #  ####  ###    ###
+//		####  #  #  #  #  #           #     #  #  ## #  #      #    #
+//		####  #  #  #  #  ###         #     #  #  # ##  ###    #    # ##
+//		#  #  #  #  #  #  #           #     #  #  #  #  #      #    #  #
+//		#  #   ##   ###   ####         ###   ##   #  #  #     ###    ###
 
 			switch(i_mode) {
 				case mode::Config:
@@ -529,22 +537,27 @@ void parseCommand(String cmd) {
 								}
 							}
 
-						} else if(args[0].equals("test")) {
-							if(num_args == 2) {
-								if(args[1].equals("read")) { // test:read
-									msg = "CMD config.test.read ->\n";
-									for(auto it = test_vars.begin(); it != test_vars.end(); ++it) {
-										msg += String("   ") + it->first + ": " + it->second + "\n";
+						} else if(args[0].equals("vars")) { // vars:
+							if(mode_vars.count(args[1]) > 0) { // vars:?
+								std::map<String, float>& these_vars = mode_vars[args[1]];
+								if(num_args == 3) {
+									if(args[2].equals("read")) { // vars:?:read
+										msg = String("CMD config.vars.") + args[1] + ".read:\n";
+										for(auto it = these_vars.begin(); it != these_vars.end(); ++it) {
+											msg += "   " + it->first + ": " + it->second + "\n";
+										}
+										Serial.println(msg);
 									}
-									Serial.println(msg);
-								}
-							} else if(num_args == 3 && test_vars.count(args[1]) > 0) {
-								if(args[2].equals("read")) { // test:?:read
-									msg = String("CMD config.test.") + args[1] + ".read: " + test_vars[args[1]]; Serial.println(msg);
+								} else if(num_args == 4 && these_vars.count(args[2]) > 0) { // vars:?:?:
+									if(args[3].equals("read")) { // vars:?:?:read
+										msg = String("CMD config.vars.") + args[1] + "." + args[2] + ".read: " + these_vars[args[2]]; Serial.println(msg);
 
-								} else { // test:?:_
-									test_vars[args[1]] = constrain(args[2].toFloat(), 0, 100);
-									msg = String("CMD config.test.") + args[1] + " -> " + test_vars[args[1]]; Serial.println(msg);
+									} else { // vars:?:?:_
+										// put mode specific constraint behavior here
+										// if(args[2].equals("...")) ... else ...
+										these_vars[args[2]] = args[3].toFloat();
+										msg = String("CMD config.vars.") + args[1] + "." + args[2] + " -> " + these_vars[args[2]]; Serial.println(msg);
+									}
 								}
 							}
 

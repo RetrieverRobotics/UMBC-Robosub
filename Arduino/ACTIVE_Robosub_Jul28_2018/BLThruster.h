@@ -15,6 +15,10 @@ public:
 
   int8_t getPower(void);
 
+  const static int PWR_MIN;
+  const static int PWR_MAX;
+  const static int PWR_CENTER;
+
 private:
   Servo esc; // esc = electronic speed controller
   int pwm_pin;

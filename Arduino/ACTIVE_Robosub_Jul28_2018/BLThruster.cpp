@@ -2,6 +2,9 @@
 
 // these are static (shared between instances),
 // which makes the initialization weird
+const int BLThruster::PWR_MIN = -100;
+const int BLThruster::PWR_MAX = 100;
+const int BLThruster::PWR_CENTER = 0;
 const int BLThruster::ESC_MIN = 1100;
 const int BLThruster::ESC_MAX = 1900;
 const int BLThruster::ESC_HALF = (BLThruster::ESC_MAX - BLThruster::ESC_MIN)/2;
@@ -28,11 +31,11 @@ void BLThruster::setReverse(bool _reversed) {
 
 void BLThruster::setPower(int8_t _power) {
   //power = _power;
-  power = constrain(_power, -100, 100);
+  power = constrain(_power, BLThruster::PWR_MIN, BLThruster::PWR_MAX);
 
   // update esc pwm
   int8_t actual_power = (reversed ? -1*power : power);
-  uint16_t us = map(actual_power, -100, 100, BLThruster::ESC_MIN, BLThruster::ESC_MAX);
+  uint16_t us = map(actual_power, BLThruster::PWR_MIN, BLThruster::PWR_MAX, BLThruster::ESC_MIN, BLThruster::ESC_MAX);
   esc.writeMicroseconds(us);
 }
 

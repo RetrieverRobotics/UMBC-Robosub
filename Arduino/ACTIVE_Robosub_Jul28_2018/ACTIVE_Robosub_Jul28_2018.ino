@@ -79,15 +79,6 @@ std::map<String, float> pid_target = {
 // lonely variable that sets the base forward/backwards velocity before yaw pid output is mixed
 float thrust_base = 0;
 
-// Pilot Mode behavior variables
-std::map<String, float> pilot_vars = {
-		
-};
-
-std::map<String, float> test_vars {
-	
-};
-
 std::map<String, std::map<String, float>> mode_vars = {
 	{ "pilot", {
 		{ "jump_thrust", 25 },
@@ -181,7 +172,7 @@ void loop() {
 	updatePIDControllers();
 
 	// output
-	updateThrusters();
+	if(i_mode != mode::Test) updateThrusters(); // mode::Test sets thruster powers directly
 
 	// logging
 	bgLog();
@@ -366,7 +357,6 @@ void printHelp(void) {
 //		#   #  #   #  # # #  # # #  #####  #  ##  #   #         #   #  #   #  #   #      #
 //		 ###    ###   #   #  #   #  #   #  #   #  ####          ####    ###    ###   ####
 
-
 /*
 Command Documention:
 	*  ?  represents a string tag
@@ -471,6 +461,7 @@ void parseCommand(String cmd) {
 				op_mode = mode::Enabled;
 				i_mode = mode::Config;
 				Serial.println("INFO System Enabled. Interpreter mode -> Config");
+				return;
 			}
 			break;
 
@@ -666,9 +657,11 @@ void parseCommand(String cmd) {
 //		#  #   ##   ###   ####        #     ###   ####   ##    #
 
 				case mode::Pilot_OnChar: // take advantage of fall-through to select either Pilot or Pilot_OnChar
-					Serial.println(); // send a newline so the response message doesn't end up appended to the command char
+					Serial.print(" ... "); // send a separator so the response message doesn't end up appended to the command char
 				case mode::Pilot:
 				{
+					std::map<String, float>& pilot_vars = mode_vars["pilot"];
+
 					if(cmd.equals("i")) { // forwards
 						if(thrust_base > 0) {
 							if(abs(thrust_base) < pilot_vars["lim_base"]) thrust_base += pilot_vars["step_thrust"];
@@ -691,20 +684,20 @@ void parseCommand(String cmd) {
 						thrust_base = 0;
 						Serial.println("CMD pilot.Halt");
 
-					} else if(cmd.equals("j")) { // left big
+					} else if(cmd.equals("J")) { // left big
 						pid_target["yaw"] += pilot_vars["jump_yaw"];
 						Serial.print("CMD pilot.Left -> "); Serial.println(pid_target["yaw"]);
 
-					} else if(cmd.equals("J")) { // left small
+					} else if(cmd.equals("j")) { // left small
 						pid_target["yaw"] += pilot_vars["step_yaw"];
 						Serial.print("CMD pilot.Left -> "); Serial.println(pid_target["yaw"]);
 
-					} else if(cmd.equals("l")) { // right big
+					} else if(cmd.equals("L")) { // right big
 						pid_target["yaw"] -= pilot_vars["jump_yaw"];
 						Serial.print("CMD pilot.Right -> "); Serial.println(pid_target["yaw"]);
 
-					} else if(cmd.equals("L")) { // right small
-						pid_target["yaw"] += pilot_vars["step_yaw"];
+					} else if(cmd.equals("l")) { // right small
+						pid_target["yaw"] -= pilot_vars["step_yaw"];
 						Serial.print("CMD pilot.Right -> "); Serial.println(pid_target["yaw"]);
 
 					} else if(cmd.equals("u")){ // ascend
@@ -729,14 +722,16 @@ void parseCommand(String cmd) {
 					break;
 
 
-// 	#  #   ##   ###   ####       #####  ####   ### #####
-// 	####  #  #  #  #  #            #    #     #      #
-// 	####  #  #  #  #  ###          #    ###    ##    #
-// 	#  #  #  #  #  #  #            #    #        #   #
-// 	#  #   ##   ###   ####         #    ####  ###    #
+//		#  #   ##   ###   ####       #####  ####   ### #####
+//		####  #  #  #  #  #            #    #     #      #
+//		####  #  #  #  #  ###          #    ###    ##    #
+//		#  #  #  #  #  #  #            #    #        #   #
+//		#  #   ##   ###   ####         #    ####  ###    #
 
 				case mode::Test:
 				{
+					std::map<String, float>& test_vars = mode_vars["test"];
+
 					if(cmd.equals("list")) {
 						msg = String("CMD test.list: [ ");
 						for(auto it = thrusters.begin(); it != thrusters.end(); ++it) {
@@ -764,7 +759,7 @@ void parseCommand(String cmd) {
 							}
 						}
 						if(!list.equals("")) {
-							msg = String("CMD test.set -> [ ") + list + " ] to " + test_vars["power"];
+							msg = String("CMD test.set -> [ ") + list + "] to " + test_vars["power"];
 							Serial.println(msg);
 						}
 					}
@@ -794,11 +789,11 @@ void bgLog() {
 
 void logSensors(void) {
 	Serial.println("INFO log.sensors...");
-	msg = "INFO Pressure (mbar): " + String(sensor_data.water_pressure); Serial.println(msg);
-	msg = "INFO Temperature (C): " + String(sensor_data.water_temp); Serial.println(msg);
-	msg = "INFO Orientation (degrees): Yaw = " + String(sensor_data.e_orientation.roll())
-		+ " Pitch = " + String(sensor_data.e_orientation.pitch())
-		+ " Roll = " + String(sensor_data.e_orientation.roll());
+	msg = String("INFO Pressure (mbar): ") + sensor_data.water_pressure; Serial.println(msg);
+	msg = String("INFO Temperature (C): ") + sensor_data.water_temp; Serial.println(msg);
+	msg = String("INFO Orientation (degrees): Yaw = ") + sensor_data.e_orientation.roll()
+		+ " Pitch = " + sensor_data.e_orientation.pitch()
+		+ " Roll = " + sensor_data.e_orientation.roll();
 	Serial.println(msg); Serial.println();
 }
 

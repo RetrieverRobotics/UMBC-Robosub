@@ -395,6 +395,9 @@ op_mode == Enabled
 
 		pid:?:start/stop ~ starts or stops a single controller
 		pid:start/stop   ~ starts or stops all controllers
+
+		thrust:_ ~ set thrust_base, it will clip to +-BLThruster::PWR_MAX, although this will not gave yaw correction any room to work
+		thrust:stop ~ alias to thrust:0
 		
 		vars:pilot:?:_     ~ set value of a variable in pilot_vars
 		vars:pilot:?:read  ~ print single variable
@@ -576,22 +579,16 @@ void parseCommand(String cmd) {
 								}
 							}
 
-						} else if(args[0].equals("pilot")) {
+						} else if(args[0].equals("thrust")) {
 							if(num_args == 2) {
-								if(args[1].equals("read")) { // pilot:read
-									msg = "CMD config.pilot.read ->\n";
-									for(auto it = pilot_vars.begin(); it != pilot_vars.end(); ++it) {
-										msg += String("   ") + it->first + ": " + it->second + "\n";
-									}
-									Serial.println(msg);
-								}
-							} else if(num_args == 3 && pilot_vars.count(args[1]) > 0) {
-								if(args[2].equals("read")) { // pilot:?:read
-									msg = String("CMD config.pilot.") + args[1] + ".read: " + pilot_vars[args[1]]; Serial.println(msg);
-
-								} else { // pilot:?:_
-									pilot_vars[args[1]] = constrain(args[2].toFloat(), 0, 100);
-									msg = String("CMD config.pilot.") + args[1] + " -> " + pilot_vars[args[1]]; Serial.println(msg);
+								if(args[1].equals("stop")) {
+									thrust_base = 0;
+									Serial.println("CMD thrust.stop -> thrust_base = 0");
+								} else {
+									float new_pwr = args[1].toFloat();
+									new_pwr = constrain(new_pwr, BLThruster::PWR_MIN, BLThruster::PWR_MAX);
+									thrust_base = new_pwr;
+									msg = String("CMD thrust -> thrust_base = ") + thrust_base; Serial.println(msg);
 								}
 							}
 

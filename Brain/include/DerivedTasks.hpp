@@ -1,49 +1,108 @@
 #ifndef DERIVED_TASKS_H
 #define DERIVED_TASKS_H
 
-#include "ActionManager.hpp"
 #include "Task.hpp"
+#include "TimeLord.hpp"
+
+#include "Actions.hpp"
 
 /*
+
 Example declaration:
 
 class XXX : public Task {
 public:
-	explicit XXX(ActionManager&);
+	explicit XXX(ThreadManager&, Comms&);
 
-	Task::task_return_t update(void);
+	const Result update(void);
+private:
 };
+
 */
 
-
-class QualifierGateEntry : public Task {
+class WaitForStart : public Task {
 public:
-	explicit QualifierGateEntry(ActionManager&);
+	explicit WaitForStart(ThreadManager&, Comms&);
 
-	Task::task_return_t update(void);
+	const Result update(void);
 private:
-
+	TimeOut timeout;
 };
 
-class QualifierPin : public Task {
+class Submerge : public Task {
 public:
-	explicit QualifierPin(ActionManager&);
+	explicit Submerge(ThreadManager&, Comms&);
 
-	Task::task_return_t update(void);
+	const Result update(void);
+private:
+	TimeStamp depth_ts;
+	TimeOut timeout;
+
+	float pressure_target;
+	float pressure_tolerance;
 };
 
-class QualifierGateExit : public Task {
+class ValidationGate : public Task {
 public:
-	explicit QualifierGateExit(ActionManager&);
+	explicit ValidationGate(ThreadManager&, Comms&);
 
-	Task::task_return_t update(void);
+	const Result update(void);
+private:
 };
 
 class SurfaceAndWait : public Task {
 public:
-	explicit SurfaceAndWait(ActionManager&);
+	explicit SurfaceAndWait(ThreadManager&, Comms&);
 
-	Task::task_return_t update(void);
+	const Result update(void);
+};
+
+class EStopDaemon : public Task {
+public:
+	explicit EStopDaemon(ThreadManager&, Comms&);
+
+	const Result update(void);
+};
+
+class CommsDaemon : public Task {
+public:
+	explicit CommsDaemon(ThreadManager&, Comms&);
+
+	const Result update(void);
+
+private:
+	action::Interpreter a_interpreter;
+	
+	int keep_alive_ticker;
+	TimeOut keep_alive;
+
+	void doStuff(void);
+};
+
+// DEFERRED - These will not be used this year
+
+class QualifierGateEntry : public Task {
+public:
+	explicit QualifierGateEntry(ThreadManager&, Comms&);
+
+	const Result update(void);
+private:
+	action::SearchForQualGate a_search;
+	action::MoveTowardsQualGate a_move;
+};
+
+class QualifierPin : public Task {
+public:
+	explicit QualifierPin(ThreadManager&, Comms&);
+
+	const Result update(void);
+};
+
+class QualifierGateExit : public Task {
+public:
+	explicit QualifierGateExit(ThreadManager&, Comms&);
+
+	const Result update(void);
 };
 
 #endif

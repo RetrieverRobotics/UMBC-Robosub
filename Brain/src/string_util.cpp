@@ -1,6 +1,6 @@
 #include "string_util.hpp"
 
-void string_util::splitOnChar(const std::string& s, char delim, std::vector<std::string>& v) {
+void string_util::splitOnChar(const std::string& s, const char delim, std::vector<std::string>& v) {
     std::size_t pos = s.find(delim);
     if(pos == std::string::npos) {
     	v.push_back(s);
@@ -19,4 +19,9 @@ void string_util::splitOnChar(const std::string& s, char delim, std::vector<std:
 
 std::string string_util::removeWhitespace(const std::string& s) {
 	return std::regex_replace( s, std::regex("\\s+"), "" );
+}
+
+std::string string_util::trim(const std::string& s) {
+	std::string trimmed_start = std::regex_replace(s, std::regex("^\\s+"), "");
+	return std::regex_replace(trimmed_start, std::regex("\\s+$"), "");
 }

@@ -8,13 +8,13 @@ MAIN := brain
 TARGET := bin/$(MAIN)
 
 SRCEXT := cpp
-SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
-OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
-CFLAGS := --std=c++11 $(shell pkg-config --cflags opencv)
-LIB := $(shell pkg-config --libs opencv)
+SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT)) # generates a list of files in src/ ending with .cpp
+OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o)) # patsubst src/_each_, build/_each_, (a substitution reference that grabs all .cpp files in /src (from SOURCES) and changes ending to .o)
+CFLAGS := --std=c++14 $(shell pkg-config --cflags opencv libserialport)
+LIB := $(shell pkg-config --libs opencv libserialport) # also known as LDFLAGS
 INC := -I include
 
-all: $(TARGET) # so that "make force_nc all" can be used to, however "make" works just as well for normal cases
+all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	@echo "LINK $@"
@@ -31,7 +31,6 @@ clean:
 
 .PHONY: clean
 
-force_nc:
-	@touch $(SRCDIR)/$(MAIN).$(SRCEXT) # brain.cpp includes code from actions.cpp_nc and tasks.cpp_nc which are not watched for compile, so this refreshes the timestamp on brain
-
 $(V).SILENT:
+
+.DELETE_ON_ERROR:

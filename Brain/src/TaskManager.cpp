@@ -1,32 +1,39 @@
 #include "TaskManager.hpp"
 
+#include <iostream>
+#include <regex>
+
+#include "plog/Log.h"
+
+#include "string_util.hpp"
+
 TaskManager::TaskManager() : NamedClass("TaskManager") {
 }
 
-void TaskManager::registerTask(Task& task) {
-	tasks.insert( { task.getInstanceName(), task } );
+bool TaskManager::registerTask(std::shared_ptr<Task> task) {
+	if(!isRegistered(task->getInstanceName())) {
+		tasks.insert( { task->getInstanceName(), task } );
+		return true;
+	}
+	LOG_WARNING << task->getFullName() << " is already registered - Ignoring." << std::endl;
+	return false;
 }
 
 void TaskManager::onStart(const std::string& task_list) {
 	std::string clean = string_util::removeWhitespace(task_list);
 
 	std::vector<std::string> rejects = splitAndVerify(clean, tags_start);
-	for(auto& tag : rejects) std::cerr << "Task '" << tag << "' not registered [ in onStart() ] : Ignoring." << std::endl;
-}
-void TaskManager::onBlock(const std::string& task_list) {
-	std::string clean = string_util::removeWhitespace(task_list);
-
-	std::vector<std::string> rejects = splitAndVerify(clean, tags_block);
-	for(auto& tag : rejects) std::cerr << "Task '" << tag << "' not registered [ in onBlock() ] : Ignoring." << std::endl;
+	for(auto& tag : rejects) LOG_WARNING << "Task '" << tag << "' not registered - Ignoring." << std::endl;
 }
 
 void TaskManager::configureTree(const std::string& config) {
 	std::string clean_config = string_util::removeWhitespace(config);
 
 	std::regex e_inside_brackets("(?:\\[)(.*?)(?:\\])"); // content inside brackets available in capture group 1
-	// [ root ? success_task1, success_task2 : failure_task1, failure_task2] - colon and failure tasks are optional
+	// [ root ? success_task1, success_task2 : failure_task1, failure_task2] - ? and :, and the trailing tasks are optional, however
+	// the root will be skipped if there is no exit behavior
 	// this next expression assumes that all whitespace has been removed, which simplifies parsing into leaf vectors
-	std::regex e_branch_parts("([a-zA-Z_,]+)(?:\\?)([a-zA-Z_,]+)(?::)?([a-zA-Z_,]+)?"); // always return 3 groups, however 3rd may be empty
+	std::regex e_branch_parts("([a-zA-Z_,]+)(?:\\?)?([a-zA-Z_,]+)?(?::)?([a-zA-Z_,]+)?"); // always return 3 groups, however 2nd and/or third may be empty
 
 	std::smatch match_inside_brackets;
 	std::string::const_iterator cc_start(clean_config.cbegin()); // initialize a local const_iterator from a const_iterator pointing to the beginning of config
@@ -37,88 +44,93 @@ void TaskManager::configureTree(const std::string& config) {
 		std::smatch match_parts;
 		std::string::const_iterator bt_start(branch_text.cbegin());
 		if(regex_search(bt_start, branch_text.cend(), match_parts, e_branch_parts)) {
-			std::cout << branch_text << std::endl;
+			LOG_INFO << branch_text << std::endl;
 
 			std::string root_tag = match_parts[1];
 			if(!isRegistered(root_tag)) {
-				std::cerr << "\tRoot task '" << match_parts[1] << "' not registered [ from '" << branch_text << "' ] : Skipping Branch." << std::endl;
+				LOG_WARNING << "\tRoot task '" << root_tag << "' not registered [ from '" << branch_text << "' ] - Skipping branch." << std::endl;
 				continue;
 			}
 
 			try {
 				branches.at(root_tag);
-				std::cerr << "\tA branch already exists for '" << root_tag << "' [ from root / '" << branch_text << "' ] : Skipping branch." << std::endl;
+				LOG_WARNING << "\tA branch already exists for '" << root_tag << "' [ from root / '" << branch_text << "' ] - Skipping branch." << std::endl;
 				continue;
 			} catch( const std::out_of_range& e) {}
 
 			std::vector<std::string> success_leaves;
 			std::vector<std::string> failure_leaves;
 
-			std::vector<std::string> rejects = splitAndVerify(match_parts[2], success_leaves);
-			for(auto& tag : rejects) std::cerr << "\tTask '" << tag << "' not registered [ from success / '" << branch_text << "' ] : Ignoring." << std::endl;
+			if(!std::string(match_parts[2]).empty()) {
+				std::vector<std::string> rejects = splitAndVerify(match_parts[2], success_leaves);
+				for(auto& tag : rejects) LOG_WARNING << "\tTask '" << tag << "' not registered [ from success / '" << branch_text << "' ] : Ignoring." << std::endl;
+			}
 
 			if(!std::string(match_parts[3]).empty()) {
 				std::vector<std::string> rejects = splitAndVerify(match_parts[3], failure_leaves);
-				for(auto& tag : rejects) std::cerr << "\tTask '" << tag << "' not registered [ from failure / '" << branch_text << "' ] : Ignoring." << std::endl;
+				for(auto& tag : rejects) LOG_WARNING << "\tTask '" << tag << "' not registered [ from failure / '" << branch_text << "' ] : Ignoring." << std::endl;
 			}
 
 			if(success_leaves.size() == 0 && failure_leaves.size() == 0) {
-				std::cerr << "\tNo valid responses [ from '" << branch_text << "' ] : Skipping this branch." << std::endl;
+				LOG_WARNING << "\tNo valid responses [ from '" << branch_text << "' ] : Skipping branch." << std::endl;
 				continue;
 			}
 
-			branches.insert( {root_tag, *(new branch_t(success_leaves, failure_leaves))} );
-			std::cout << "\t*** Branch added ***" << std::endl;
+			LOG_DEBUG << "S leaves: " << success_leaves.size() << ", F leaves: " << failure_leaves.size() << std::endl;
+			branches.insert( {root_tag, branch_t(success_leaves, failure_leaves)} );
+			LOG_INFO << "\t*** Branch added ***" << std::endl;
 		} else {
-			std::cerr << "Bad branch syntax [ from '" << branch_text << "' ] : Skipping this branch." << std::endl;
+			LOG_WARNING << "Bad branch syntax [ from '" << branch_text << "' ] : Skipping branch." << std::endl;
 		}
 
 	}
 }
 
 void TaskManager::start() {
-	for(auto& task_entry : tasks) {
-		if(task_entry.second.getState() == Task::State::Running) task_entry.second.kill();
-	}
+	killAll();
 	for(std::string& tag : tags_start) {
-		tasks.at(tag).launch();
+		tasks.at(tag)->launch();
 	}
 }
 
-void TaskManager::block() {
-	// stop all tasks, start tasks in tags_block, then update running tasks in a while loop; DO NOT BRANCH
-	std::cerr << "block() is not implemented." << std::endl;
+void TaskManager::killAll(bool reset_after_kill) {
+	for(auto& task_entry : tasks) {
+		if(task_entry.second->getState() == Task::State::Running) task_entry.second->kill(reset_after_kill);
+	}
 }
 
 void TaskManager::update(bool reset_after_branch) {
 	for(auto& task_entry : tasks) {
-		Task& task = task_entry.second;
-		if(task.getState() == Task::State::Running) {
-			auto ret = task.update();
-			Task::ReturnStatus status = std::get<0>(ret);
-			if(status != Task::ReturnStatus::Continue) {
-				task.kill(reset_after_branch);
+		std::shared_ptr<Task> task = task_entry.second;
+		if(task->getState() == Task::State::Running) {
+			Task::Result result = task->update();
+			if(result.getStatus() != Task::ReturnStatus::Continue) {
+				task->kill(reset_after_branch);
 
-				std::cout << task.getFullName() << " { " << Task::ReturnMsg[(int)status] << ": " << std::get<1>(ret) << " }" << std::endl;
+				LOG_INFO << task->getFullName() << " { " << Task::ReturnMsg[(int)result.getStatus()] << ": " << result.getMessage() << " }, Branching..." << std::endl;
 
-				branch(task, status);
+				branch(task, result.getStatus());
 			}
 		}
 	}
 }
 
-void TaskManager::branch(Task& task, Task::ReturnStatus& status) {
+void TaskManager::branch(std::shared_ptr<Task> task, const Task::ReturnStatus& status) {
 	try { // not all tasks have branches
-		branch_t b = branches.at(task.getInstanceName());
+		branch_t& b = branches.at(task->getInstanceName());
 		if(status == Task::ReturnStatus::Success) {
 			std::vector<std::string> list = std::get<0>(b);
-			for(auto& t : list) {
-				tasks.at(t).launch();
+			if(list.size() > 0) {
+				for(auto& t : list) {
+					tasks.at(t)->launch();
+				}
 			}
 		} else if(status == Task::ReturnStatus::Failure) {
 			std::vector<std::string> list = std::get<1>(b);
-			for(auto& t : list) {
-				tasks.at(t).launch();
+			if(list.size() > 0) {
+				for(auto& t : list) {
+					tasks.at(t)->launch();
+				}
 			}
 		}
 		
@@ -127,7 +139,7 @@ void TaskManager::branch(Task& task, Task::ReturnStatus& status) {
 
 bool TaskManager::tasksRunning() {
 	for(auto& task_entry : tasks) {
-		if(task_entry.second.getState() == Task::State::Running) return true;
+		if(task_entry.second->getState() == Task::State::Running) return true;
 	}
 	return false;
 }
@@ -136,21 +148,21 @@ std::string TaskManager::listTasks() {
 	std::string output = "Tasks\n--------\n";
 	for(auto& task_entry : tasks) {
 		output += " ";
-		switch(task_entry.second.getState()) {
+		switch(task_entry.second->getState()) {
 			case Task::State::Running:
 				output += "*";
 				break;
 			case Task::State::Done:
-				output += "^";
+				output += "x";
 				break;
-			case Task::State::Stopped:
+			case Task::State::Ready:
 				output += "-";
 				break;
 			default:
 				output += "?";
 				break;
 		}
-		output += " | " + task_entry.second.getFullName() + "\n";
+		output += " | " + task_entry.second->getFullName() + "\n";
 	}
 	output += "\n";
 	return output;
@@ -164,7 +176,7 @@ std::string TaskManager::listTasks(std::string which) {
 		}
 	} else if(which == "running") {
 		for(auto& task_entry : tasks) {
-			if(task_entry.second.getState() == Task::State::Running) output += task_entry.first + "\n";
+			if(task_entry.second->getState() == Task::State::Running) output += task_entry.first + "\n";
 		}
 	} else if(which == "onStart") {
 		for(auto& tag : tags_start) {

@@ -7,7 +7,7 @@ const std::string& NamedClass::getClassName() {
 const std::string& NamedClass::getInstanceName() {
 	return instance_name;
 }
-const std::string NamedClass::getFullName() {
+const std::string NamedClass::getFullName() const {
 	return class_name + "#" + instance_name;
 }
 

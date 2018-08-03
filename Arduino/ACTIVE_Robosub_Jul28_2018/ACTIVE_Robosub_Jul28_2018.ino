@@ -116,12 +116,14 @@ void logSensors(void);
 void logImuCal(void);
 void logThrusters(void);
 void logPID(void);
+void logTelemetry(void);
 
 std::map<String, NBDelayCallback> log_triggers = {
 	{ "sensors", NBDelayCallback(200, logSensors) },
 	{ "imu_cal", NBDelayCallback(200, logImuCal) },
 	{ "thr", NBDelayCallback(200, logThrusters) },
 	{ "pid", NBDelayCallback(200, logPID) },
+	{ "telemetry", NBDelayCallback(50, logTelemetry) }
 };
 
 const int PIN_ADC_KILL = 22;
@@ -225,7 +227,12 @@ void readSerial() {
 
 		} else {
 			if(c == '\n') {
-				parseCommand(cmd_str);
+				if(cmd_str.startsWith("~~") && cmd_str.indexOf("cmd") > -1) { // if using USBSerialLink syntax, parse as such
+					// ~~field_name~type~data
+					int i = cmd_str.lastIndexOf('~'); i++; // index after syntax finish
+        			String contents = cmd_str.substring(i);
+        			parseCommand(contents);
+				} else parseCommand(cmd_str); // otherwise parse directly
 				cmd_str = "";
 			} else {
 				cmd_str += c;
@@ -849,7 +856,8 @@ void logThrusters(void) {
 	Serial.println(msg); Serial.println();
 }
 
-void sendTelemetry(void) {
+void logTelemetry(void) {
+	// USBSerialLink syntax: ~~field~type_hint~data
 	msg = String("~~data_pressure~s~") + sensor_data.water_pressure; Serial.println(msg);
 }
 

@@ -46,6 +46,45 @@ cal log:
 
 */
 
+#elif defined(IMU_MPU9250)
+  Serial.println("BOOT Initializing IMU...");
+  Wire.begin();
+
+  byte c = mpu9250.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
+  if(c == 0x73) {
+    Serial.println("BOOT IMU Self test (lower is better)...");
+    Serial.print("BOOT\t");
+    mpu9250.MPU9250SelfTest(mpu9250.SelfTest);
+    for(int i = 0; i < 6; ++i) {
+      Serial.print(mpu9250.SelfTest[i], 1);
+      Serial.print(" ");
+    }
+    Serial.println();
+
+    Serial.println("BOOT Starting IMU Cal! DO NOT MOVE");
+    mpu9250.calibrateMPU9250(mpu9250.gyroBias, mpu9250.accelBias);
+    Serial.println("BOOT\tIMU Cal complete.");
+
+    mpu9250.initMPU9250();
+    Serial.println("BOOT IMU init complete - ACC/GYR/TEMP");
+
+    char d = mpu9250.readByte(AK8963_ADDRESS, WHO_AM_I_AK8963);
+    if(d == 0x48) {
+      mpu9250.initAK8963(mpu9250.magCalibration);
+      Serial.println("BOOT Reading Mag Cal...");
+      Serial.print("BOOT\t");
+      for(int i = 0; i < 3; i++) {
+        Serial.print(mpu9250.magCalibration[i], 2);
+        Serial.print(" ");
+      }
+      Serial.println();
+    } else Serial.println("BOOT Cannot find AK8963 magnetometer.");
+
+  } else {
+    Serial.print("BOOT Cannot find MPU9250 @ 0x73. Instead found: ");
+    Serial.println(c, HEX);
+  }
+
 #endif
 }
 

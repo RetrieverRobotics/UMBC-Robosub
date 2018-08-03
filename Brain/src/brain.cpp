@@ -101,9 +101,12 @@ int main(int argc, char* argv[]) {
 
 	//std::cout << USBSerialLink::stringifyPorts() << std::endl;
 
-	//comms.addLink("teensy", std::make_shared<USBSerialLink>("/dev/cu.usbmodem848141", 115200));
+#ifdef KERNEL_LINUX
+	if(use_usb) comms.addLink("teensy", std::make_shared<USBSerialLink>("/dev/ttyACM0", 115200));
+#else
 	if(use_usb) comms.addLink("teensy", std::make_shared<USBSerialLink>("/dev/cu.usbmodem2753871", 115200));
-
+	//comms.addLink("teensy", std::make_shared<USBSerialLink>("/dev/cu.usbmodem848141", 115200));
+#endif
 	if(TEST_comms) comms_test(comms); // hacky way to break code out of main - would prefer a separate file but don't know how to write the makefile for this
 
 	ThreadManager thread_manager;

@@ -177,7 +177,8 @@ sudo apt-get install git
 [ Optionally install keynav for keyboard only control of GUI ]
 sudo apt-get install keynav
 
-[ Download the Arduino IDE for Linux ARM
+[ Download the Arduino IDE for Linux ARM - Use Arduino 1.8.0 and Teensyduino
+1.34 until mentioned otherwise.
 Extract the tar.xz with tar xvf to /usr/local/share/.
 Symlink arduino and arduino-builder from there to /usr/local/bin/
 Open Arduino, set the sketchbook folder and adjust other preferences
@@ -185,6 +186,12 @@ as necessary. In the current system, the pi user is already in the
 dialout group. ]
 [ Download the Teensyduino package from pjrc.com and make executable
 with chmod u+x _file_ .
+To access old versions, use the link https://www.pjrc.com/teensy/td_XXX/TeensyduinoInstall.linuxarm
+but replace XXX with the major and minor versions, ie 1.34 is td_134
 Install the udev rules (as documented on the Teensyduino install page),
 and run the installer. Select the extracted arduino install
 in /usr/local/share as the installation target. ]
+
+sudo apt-get install wpagui
+
+sudo apt-get install libserialport-dev

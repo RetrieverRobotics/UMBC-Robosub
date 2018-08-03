@@ -15,8 +15,10 @@ OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o)) # pats
 CFLAGS := --std=c++14 $(shell pkg-config --cflags opencv libserialport)
 LIB := $(shell pkg-config --libs opencv libserialport) # also known as LDFLAGS
 INC := -I include
+VARS :=
 
 ifeq ($(UNAME_S), Linux)
+	VARS += -DKERNEL_LINUX
 	LIB += -pthread
 endif
 
@@ -29,7 +31,7 @@ $(TARGET): $(OBJECTS)
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(BUILDDIR)
 	@echo "CC $<"
-	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
+	$(CC) $(CFLAGS) $(INC) $(VARS) -c -o $@ $<
 
 clean:
 	@echo "Cleaning..."

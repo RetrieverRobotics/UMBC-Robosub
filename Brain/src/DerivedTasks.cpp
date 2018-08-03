@@ -115,6 +115,7 @@ const Task::Result Submerge::update(void) {
                 depth_ts.touch();
 
                 double pressure_current = comms.get<double>("teensy", "data_pressure");
+                LOG_DEBUG << "pressure " << pressure_current;
                 if(fabs(pressure_current - pressure_target) < pressure_tolerance) {
                     return Task::Result(ReturnStatus::Success, "Submerged to " + std::to_string(pressure_target));
                 }

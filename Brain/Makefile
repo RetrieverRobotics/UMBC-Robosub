@@ -1,5 +1,7 @@
 # https://hiltmon.com/blog/2013/07/03/a-simple-c-plus-plus-project-structure/
 
+UNAME_S := $(shell uname -s)
+
 CC := g++
 SRCDIR := src
 BUILDDIR := build
@@ -13,6 +15,10 @@ OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o)) # pats
 CFLAGS := --std=c++14 $(shell pkg-config --cflags opencv libserialport)
 LIB := $(shell pkg-config --libs opencv libserialport) # also known as LDFLAGS
 INC := -I include
+
+ifeq ($(UNAME_S), Linux)
+	LIB += -pthread
+endif
 
 all: $(TARGET)
 

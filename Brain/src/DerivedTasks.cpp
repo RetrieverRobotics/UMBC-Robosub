@@ -81,7 +81,7 @@ const Task::Result Setup::update(void) {
                     comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure lock"));
                     comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure start"));
                 }
-                
+
                 return Task::Result(ReturnStatus::Success, "Setup complete");
             }
             break;
@@ -96,7 +96,7 @@ const Task::Result Setup::update(void) {
 // ********************************
 
 Submerge::Submerge(ThreadManager& _t_m, Comms& _c) : Task("Submerge", _t_m, _c),
-    timeout(10*1000), pressure_target(1015), pressure_tolerance(5) {}
+    timeout(10*1000), pressure_target(1050), pressure_tolerance(5) {}
 
 const Task::Result Submerge::update(void) {
 	switch(getRunType()) {

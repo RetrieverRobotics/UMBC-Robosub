@@ -28,6 +28,15 @@ public:
 private:
 };
 
+class Setup : public Task {
+public:
+	explicit Setup(ThreadManager&, Comms&);
+
+	const Result update(void);
+private:
+	TimeOut delay;
+};
+
 class Submerge : public Task {
 public:
 	explicit Submerge(ThreadManager&, Comms&);
@@ -47,6 +56,8 @@ public:
 
 	const Result update(void);
 private:
+	TimeOut delay;
+	int operation;
 };
 
 class SurfaceAndWait : public Task {

@@ -35,11 +35,17 @@ int main(int argc, char* argv[]) {
 
 	LOG_INFO << "Electrifying Brain :)";
 
+	Comms comms;
+	comms.addLink("pi", std::make_shared<DummyLink>(), Comms::CopyLocal);
+
 	int opt;
 	bool TEST_comms = false;
 	bool use_usb = false;
-	while( (opt = getopt(argc, argv, "tu")) != -1) {
+	while( (opt = getopt(argc, argv, "ctu")) != -1) {
 		switch(opt) {
+			case 'c':
+				comms.send("pi", "comp_start_delay_sec", comms_util::Hint::Int, (int)30);
+				break;
 			case 't':
 				TEST_comms = true;
 				LOG_INFO << "-t = Tests enabled";
@@ -53,8 +59,6 @@ int main(int argc, char* argv[]) {
 
 	//std::cout << USBSerialLink::stringifyPorts() << std::endl;
 
-	Comms comms;
-	comms.addLink("pi", std::make_shared<DummyLink>(), Comms::CopyLocal);
 	//comms.addLink("teensy", std::make_shared<USBSerialLink>("/dev/cu.usbmodem848141", 115200));
 	if(use_usb) comms.addLink("teensy", std::make_shared<USBSerialLink>("/dev/cu.usbmodem2753871", 115200));
 
@@ -66,13 +70,15 @@ int main(int argc, char* argv[]) {
 	task_manager.registerTask(std::make_shared<CommsDaemon>(thread_manager, comms));
 	task_manager.registerTask(std::make_shared<EStopDaemon>(thread_manager, comms));
 	task_manager.registerTask(std::make_shared<WaitForStart>(thread_manager, comms));
+	task_manager.registerTask(std::make_shared<Setup>(thread_manager, comms));
 	task_manager.registerTask(std::make_shared<Submerge>(thread_manager, comms));
 	task_manager.registerTask(std::make_shared<ValidationGate>(thread_manager, comms));
 	task_manager.registerTask(std::make_shared<SurfaceAndWait>(thread_manager, comms));
 
 	task_manager.onStart("EStopDaemon, CommsDaemon, WaitForStart");
 	task_manager.configureTree(
-		"[WaitForStart ? Submerge]"
+		"[WaitForStart ? Setup]"
+		"[Setup ? Submerge]"
 		"[Submerge ? ValidationGate : SurfaceAndWait]"
 		"[ValidationGate ? SurfaceAndWait : SurfaceAndWait]"
 		"[EStopDaemon : SurfaceAndWait]"

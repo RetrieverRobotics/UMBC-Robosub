@@ -113,7 +113,7 @@ void TaskManager::update(bool reset_after_branch) {
 			if(result.getStatus() != Task::ReturnStatus::Continue) {
 				task->kill(reset_after_branch);
 
-				LOG_INFO << task->getFullName() << " { " << Task::ReturnMsg[(int)result.getStatus()] << ": " << result.getMessage() << " }, Branching..." << std::endl;
+				LOG_INFO << task->getFullName() << " { " << Task::ReturnMsg[(int)result.getStatus()] << ": " << result.getMessage() << " }" << std::endl;
 
 				branch(task, result.getStatus());
 			}

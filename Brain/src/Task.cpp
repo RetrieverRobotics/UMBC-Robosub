@@ -12,7 +12,6 @@ const std::string Task::ReturnMsg[]= { "Success", "Continue", "Failure" };
 void Task::launch(bool skip_init) {
 	if(skip_init) run_type = RunType::Normal; else run_type = RunType::Init;
 	state = State::Running;
-	update();
 }
 void Task::kill(bool reset_state) {
 	run_type = RunType::Stop;

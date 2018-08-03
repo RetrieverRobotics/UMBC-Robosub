@@ -104,7 +104,7 @@ const T Comms::get(const std::string& link_id, const std::string& field_name) {
 		if(typed_ptr) return typed_ptr->getContents();
 	}
 
-	std::cerr << "Error in Comms::get() for '" << field_name << "' in '" << link_id << "', returning default for type..." << std::endl;
+	LOG_WARNING << "Error in Comms::get() for '" << field_name << "' in '" << link_id << "', returning default for type.";
 	return T();
 }
 

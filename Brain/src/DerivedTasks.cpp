@@ -19,6 +19,7 @@ const Task::Result XXX::update(void) {
         case RunType::Normal:
             break;
         case RunType::Stop:
+            unloadAll();
             break;
     }
     return Task::Result(ReturnStatus::Continue, "");
@@ -39,7 +40,6 @@ const Task::Result WaitForStart::update(void) {
 
         case RunType::Normal:
             if(comms.isSet("pi", "cmdline") && comms.get<std::string>("pi", "cmdline") == ("start")) {
-                comms.send("teensy", "cmd", comms_util::Hint::String, std::string("SAFE")); // note the constructor, otherwise it's a char array, which causes a program crash XD
                 return Task::Result(ReturnStatus::Success, "Starting...");
             }
             break;
@@ -53,15 +53,55 @@ const Task::Result WaitForStart::update(void) {
 }
 
 // ********************************
+// Setup
+// ********************************
+
+Setup::Setup(ThreadManager& _t_m, Comms& _c) : Task("Setup", _t_m, _c), delay(0, true) {}
+
+const Task::Result Setup::update(void) {
+    switch(getRunType()) {
+        case RunType::Init:
+
+            if(comms.isSetAs<int>("pi", "comp_start_delay_sec")) {
+                int dur = comms.get<double>("pi", "comp_start_delay_sec");
+                delay.reset(dur*1000);
+                LOG_INFO << "Competition mode: Delaying start by " << dur << " seconds...";
+            }
+            break;
+        case RunType::Normal:
+            if(delay.timedOut()) {
+                if(comms.linkExists("teensy")) {
+                    comms.send("teensy", "cmd", comms_util::Hint::String, std::string("SAFE")); // note the constructor, otherwise it's a char array, which causes a program crash XD
+
+                    comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid yaw tune 2,0,1"));
+                    comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid yaw lock"));
+                    comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid yaw start"));
+
+                    comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure tune 2,0.1,0"));
+                    comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure lock"));
+                    comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure start"));
+                }
+                
+                return Task::Result(ReturnStatus::Success, "Setup complete");
+            }
+            break;
+        case RunType::Stop:
+            break;
+    }
+    return Task::Result(ReturnStatus::Continue, "");
+}
+
+// ********************************
 // Submerge
 // ********************************
 
 Submerge::Submerge(ThreadManager& _t_m, Comms& _c) : Task("Submerge", _t_m, _c),
-    timeout(10*1000), pressure_target(1010), pressure_tolerance(10) {}
+    timeout(10*1000), pressure_target(1015), pressure_tolerance(5) {}
 
 const Task::Result Submerge::update(void) {
 	switch(getRunType()) {
         case RunType::Init:
+            comms.send("teensy", "cmd", comms_util::Hint::String, std::string("log telemetry start"));
             comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure ") + std::to_string(pressure_target));
             depth_ts.touch();
             timeout.reset();
@@ -82,6 +122,7 @@ const Task::Result Submerge::update(void) {
             break;
 
         case RunType::Stop:
+            comms.send("teensy", "cmd", comms_util::Hint::String, std::string("log telemetry stop"));
         	unloadAll();
             break;
     }
@@ -93,15 +134,23 @@ const Task::Result Submerge::update(void) {
 // ValidationGate
 // ********************************
 
-ValidationGate::ValidationGate(ThreadManager& _t_m, Comms& _c) : Task("ValidationGate", _t_m, _c) {}
+ValidationGate::ValidationGate(ThreadManager& _t_m, Comms& _c) : Task("ValidationGate", _t_m, _c),
+    delay(0), operation(0) {}
 
 const Task::Result ValidationGate::update(void) {
     switch(getRunType()) {
         case RunType::Init:
+            operation = 0;
+            comms.send("teensy", "cmd", comms_util::Hint::String, std::string("thrust 30"));
+            delay.reset(5*1000);
             break;
         case RunType::Normal:
+            if(delay.timedOut()) {
+                if(operation == 0) return Task::Result(ReturnStatus::Success, "");
+            }
             break;
         case RunType::Stop:
+            comms.send("teensy", "cmd", comms_util::Hint::String, std::string("thrust 0"));
             break;
     }
     return Task::Result(ReturnStatus::Continue, "");

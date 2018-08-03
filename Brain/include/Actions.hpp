@@ -49,6 +49,7 @@ namespace action {
 	public:
 		Interpreter() {}
 
+		void init(void);
 		void step(void);
 
 		std::string getStr() { return input; }

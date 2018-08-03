@@ -3,7 +3,7 @@
 #include <thread>
 #include <chrono>
 
-Threadable::Threadable() : allow_step(true), working(false), clean_up_next(false), init_complete(false) {}
+Threadable::Threadable() : allow_step(true), working(false), clean_up_next(false), init_complete(false), persistent(false) {}
 
 void Threadable::operator()(void) {
 	if(init_complete) {

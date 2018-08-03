@@ -1,10 +1,10 @@
 
 #include "NamedClass.hpp"
 
-const std::string& NamedClass::getClassName() {
+const std::string& NamedClass::getClassName() const {
 	return class_name;
 }
-const std::string& NamedClass::getInstanceName() {
+const std::string& NamedClass::getInstanceName() const {
 	return instance_name;
 }
 const std::string NamedClass::getFullName() const {

@@ -7,12 +7,12 @@
 using namespace th_man;
 
 void ThreadManager::load(NamedClass& parent, Threadable& functor, const std::string& display_name, const th_man::RunLevel run_level) {
-	functor.tryInit();
+	if(functor.tryInit()) { // if not loaded
+		std::thread t(std::ref(functor));
+		if(t.joinable()) t.detach();
 
-	std::thread t(std::ref(functor));
-	if(t.joinable()) t.detach();
-
-	thread_map.emplace(&functor, std::make_unique<ThreadPack>(parent, display_name, run_level, t));
+		thread_map.emplace(&functor, std::make_unique<ThreadPack>(parent, display_name, run_level, t));
+	}
 }
 
 th_man::ThreadStatus ThreadManager::status(Threadable& th) {
@@ -21,12 +21,12 @@ th_man::ThreadStatus ThreadManager::status(Threadable& th) {
 
 		if(th.isWorking()) {
 			return ThreadStatus::Working;
-		} else {
-			return ThreadStatus::Paused;
 		}
 
-	} catch(std::out_of_range& e) {}
-	return ThreadStatus::NotLoaded;
+	} catch(std::out_of_range& e) {
+		return ThreadStatus::NotLoaded;
+	}
+	return ThreadStatus::Paused;
 }
 
 void ThreadManager::resume(Threadable& th) {
@@ -34,9 +34,8 @@ void ThreadManager::resume(Threadable& th) {
 }
 
 void ThreadManager::unload(Threadable& th) {
-	th.queueCleanUp();
 	// safe to drop unique_ptr<ThreadPack> (containing thread object) according to https://en.cppreference.com/w/cpp/thread/thread/~thread
-	thread_map.erase(&th);
+	if(th.queueCleanUp()) thread_map.erase(&th); // only release the handle if the thread actually intends to stop	
 }
 
 void ThreadManager::unloadAllFromParent(const NamedClass& parent) {
@@ -62,21 +61,22 @@ std::string ThreadManager::listThreads(void) {
 				LOG_WARNING << "ThreadStatus '" << (int)th_status << "' not supported.";
 				break;
 		}
-		output += " ";
+		output += " (";
 		ThreadPack& info = *(it->second);
 		switch(info.run_level) {
 			case RunLevel::Critical:
-				output += "(C)";
+				output += "C";
 				break;
 			case RunLevel::Worker:
-				output += "(W)";
+				output += "W";
 				break;
 			default:
 				output += "?";
 				LOG_WARNING << "RunLevel '" << (int)info.run_level << "' not supported.";
 				break;
 		}
-		output += " | " + info.name + " @ " + info.parent.getFullName() + "\n";
+		if(it->first->isPersistent()) output += "*"; else output += " ";
+		output += ") | " + info.name + " @ " + info.parent.getInstanceName() + "\n\n";
 	}
 	return output;
 }

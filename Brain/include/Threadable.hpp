@@ -19,6 +19,13 @@ run cleanUp() immediately when ThreadManager::unload is called as a step can not
 be interrupted - a step must complete before cleanUp can be called. This is why,
 the function is queueCleanUp() - to indicate that cleanUp will happens when the
 thread gets around to checking if it should.
+
+NOTE: It is possible to run blocking functions in a Threadable without interrupting
+main thread execution however inadvisable as this will prevent Task::unload
+from having predictable behavior. Exceptions are things like reading from cin
+which have to be blocking - however it then becomes risky to try and cleanUp
+that thread. To that end I am experimenting with a 'persistent' property. queueCleanUp()
+will have no effect on a thread that has 'persistent' set.
 */
 
 class Threadable {
@@ -37,8 +44,12 @@ public:
 		return false;
 	}
 
-	void queueCleanUp(void) {
-		clean_up_next.store(true);
+	bool queueCleanUp(void) {
+		if(!persistent) {
+			clean_up_next.store(true);
+			return true;
+		}
+		return false;
 	}
 
 	void nextStep(void) {
@@ -48,19 +59,27 @@ public:
 	bool isWorking(void) {
 		return working.load();
 	}
+	bool isPersistent(void) {
+		return persistent;
+	}
 
 protected:
 	virtual void init(void) {}
 	virtual void step(void) {}
 	virtual void cleanUp(void) {}
 
+	bool persistent;
+	void makePersistent(void) {
+		persistent = true;
+	}
+
+	void sleepThread(int ms);
+
 private:
 	std::atomic<bool> init_complete;
 	std::atomic<bool> allow_step;
 	std::atomic<bool> working;
 	std::atomic<bool> clean_up_next;
-
-	void sleepThread(int ms);
 };
 
 #endif

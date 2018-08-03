@@ -5,6 +5,8 @@
 #include <thread>
 #include <chrono>
 
+#include "plog/Log.h"
+
 /*
 
 Example Implementation
@@ -26,6 +28,9 @@ void action::MoveTowardsQualGate::step(void) {
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
+void action::Interpreter::init(void) {
+	makePersistent();
+}
 void action::Interpreter::step(void) {
 	std::getline(std::cin, input);
 }

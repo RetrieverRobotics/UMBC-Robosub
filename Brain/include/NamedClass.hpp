@@ -16,8 +16,8 @@ This may be deprecated in the next few commits and the naming system changed.
 
 class NamedClass {
 public:
-	const std::string& getClassName();
-	const std::string& getInstanceName();
+	const std::string& getClassName() const;
+	const std::string& getInstanceName() const;
 	const std::string getFullName() const;
 	
 protected:

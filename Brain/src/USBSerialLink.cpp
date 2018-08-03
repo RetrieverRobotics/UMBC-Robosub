@@ -3,6 +3,8 @@
 //https://github.com/wjwwood/serial
 #include <iostream>
 
+#include "plog/Log.h"
+
 using namespace comms_util;
 
 USBSerialLink::USBSerialLink(const std::string& device_descriptor, int baud_rate) : separator('~'), array_separator(',') {
@@ -119,6 +121,7 @@ std::string USBSerialLink::parse(const std::string& parse_me) {
 		for(int i = 0; i < usable_lines; ++i) {
 			std::string& line = lines[i]; // vector[] returns reference
 			line = string_util::trim(line);
+
 			// in substring, verify that first two characters are separator (drop input if not), then remove the first two and split on separator
 			if(line.find(std::string(2u, separator)) == 0) {
 				line = line.substr(2);
@@ -150,7 +153,12 @@ std::string USBSerialLink::parse(const std::string& parse_me) {
 							typeNotSupported(fields[0]);
 					}
 				} else continue; 
-			} else continue;
+			} else {
+				if(line != "") {
+					LOG_INFO << "(USB) " << line;
+				}
+				continue;
+			}
 		}
 	}
 	return keep_for_later;

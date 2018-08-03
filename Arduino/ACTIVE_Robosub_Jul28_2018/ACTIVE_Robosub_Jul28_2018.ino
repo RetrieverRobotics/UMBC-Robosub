@@ -231,6 +231,7 @@ void readSerial() {
 					// ~~field_name~type~data
 					int i = cmd_str.lastIndexOf('~'); i++; // index after syntax finish
         			String contents = cmd_str.substring(i);
+        			Serial.print(">> "); Serial.println(contents);
         			parseCommand(contents);
 				} else parseCommand(cmd_str); // otherwise parse directly
 				cmd_str = "";
@@ -858,7 +859,7 @@ void logThrusters(void) {
 
 void logTelemetry(void) {
 	// USBSerialLink syntax: ~~field~type_hint~data
-	msg = String("~~data_pressure~s~") + sensor_data.water_pressure; Serial.println(msg);
+	msg = String("~~data_pressure~d~") + sensor_data.water_pressure; Serial.println(msg);
 }
 
 //		#       ###   #   #   ####          ####  #####  #   #  #####  #####

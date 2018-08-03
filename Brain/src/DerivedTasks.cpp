@@ -38,7 +38,8 @@ const Task::Result WaitForStart::update(void) {
             break;
 
         case RunType::Normal:
-            if(comms.isSet("pi", "cmdline") && comms.get<std::string>("pi", "cmdline").find("start") != std::string::npos) {
+            if(comms.isSet("pi", "cmdline") && comms.get<std::string>("pi", "cmdline") == ("start")) {
+                comms.send("teensy", "cmd", comms_util::Hint::String, std::string("SAFE")); // note the constructor, otherwise it's a char array, which causes a program crash XD
                 return Task::Result(ReturnStatus::Success, "Starting...");
             }
             break;
@@ -61,13 +62,13 @@ Submerge::Submerge(ThreadManager& _t_m, Comms& _c) : Task("Submerge", _t_m, _c),
 const Task::Result Submerge::update(void) {
 	switch(getRunType()) {
         case RunType::Init:
-            comms.send("teensy", "cmd", comms_util::Hint::String, "config:depth:" + std::to_string(pressure_target));
+            comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure ") + std::to_string(pressure_target));
             depth_ts.touch();
             timeout.reset();
             break;
 
         case RunType::Normal:
-        	if(comms.hasNew("teensy", "data_pressure", depth_ts.getTimePoint())) {
+            if(comms.hasNew("teensy", "data_pressure", depth_ts.getTimePoint())) {
                 depth_ts.touch();
 
                 float pressure_current = comms.get<float>("teensy", "data_pressure");
@@ -139,6 +140,7 @@ const Task::Result EStopDaemon::update(void) {
         case RunType::Init:
             break;
         case RunType::Normal:
+            /*
             // check to see if estop bool is set in comms
             if(comms.isSetAs<bool>("teensy", "ESTOP")) {
                 // thread_manager.unloadWorkers();
@@ -153,10 +155,11 @@ const Task::Result EStopDaemon::update(void) {
             // keep updating thread_manager in a blocking loop until there are no more worker threads computing
             // then send reset signal to microcontroller
             // and return Task::Result(ReturnState::Success, "reset complete");
-            if(comms.isSet("pi", "cmdline") && comms.get<std::string>("pi", "cmdline").find("estop()") != std::string::npos) {
+            if(comms.isSet("pi", "cmdline") && comms.get<std::string>("pi", "cmdline").find("estop") != std::string::npos) {
                 comms.send("teensy", "cmd", comms_util::Hint::String, "ESTOP");
                 return Task::Result(ReturnStatus::Success, "");
             }
+            */
             break;
         case RunType::Stop:
             unloadAll();

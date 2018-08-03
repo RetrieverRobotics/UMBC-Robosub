@@ -15,7 +15,7 @@ bool TaskManager::registerTask(std::shared_ptr<Task> task) {
 		tasks.insert( { task->getInstanceName(), task } );
 		return true;
 	}
-	LOG_WARNING << task->getFullName() << " is already registered - Ignoring." << std::endl;
+	LOG_WARNING << task->getInstanceName() << " is already registered - Ignoring." << std::endl;
 	return false;
 }
 
@@ -27,6 +27,8 @@ void TaskManager::onStart(const std::string& task_list) {
 }
 
 void TaskManager::configureTree(const std::string& config) {
+	branches.clear(); // wipe previous contents of the branches to allow reconfig
+
 	std::string clean_config = string_util::removeWhitespace(config);
 
 	std::regex e_inside_brackets("(?:\\[)(.*?)(?:\\])"); // content inside brackets available in capture group 1
@@ -89,13 +91,17 @@ void TaskManager::configureTree(const std::string& config) {
 void TaskManager::start() {
 	killAll();
 	for(std::string& tag : tags_start) {
+		LOG_DEBUG << "Launching " << tag;
 		tasks.at(tag)->launch();
 	}
 }
 
 void TaskManager::killAll(bool reset_after_kill) {
 	for(auto& task_entry : tasks) {
-		if(task_entry.second->getState() == Task::State::Running) task_entry.second->kill(reset_after_kill);
+		if(task_entry.second->getState() == Task::State::Running) {
+			task_entry.second->kill(reset_after_kill);
+			LOG_DEBUG << "Killing " << task_entry.first;
+		}
 	}
 }
 
@@ -162,7 +168,7 @@ std::string TaskManager::listTasks() {
 				output += "?";
 				break;
 		}
-		output += " | " + task_entry.second->getFullName() + "\n";
+		output += " | " + task_entry.second->getInstanceName() + "\n";
 	}
 	output += "\n";
 	return output;
@@ -180,10 +186,6 @@ std::string TaskManager::listTasks(std::string which) {
 		}
 	} else if(which == "onStart") {
 		for(auto& tag : tags_start) {
-			output += tag + "\n";
-		}
-	} else if(which == "onBlock") {
-		for(auto& tag : tags_block) {
 			output += tag + "\n";
 		}
 	}

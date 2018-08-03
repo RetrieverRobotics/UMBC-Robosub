@@ -30,14 +30,20 @@ void comms_test(Comms&);
 
 
 int main(int argc, char* argv[]) {
+	LOG_INFO << "Electrifying Brain :)";
 
 	int opt;
 	bool TEST_comms = false;
-	while( (opt = getopt(argc, argv, "t")) != -1) {
+	bool use_usb = false;
+	while( (opt = getopt(argc, argv, "tu")) != -1) {
 		switch(opt) {
 			case 't':
 				TEST_comms = true;
-				LOG_INFO << "-t -> Tests enabled";
+				LOG_INFO << "-t = Tests enabled";
+				break;
+			case 'u':
+				use_usb = true;
+				LOG_INFO << "-u = Using USB device.";
 				break;
 		}
 	}
@@ -49,7 +55,8 @@ int main(int argc, char* argv[]) {
 
 	Comms comms;
 	comms.addLink("pi", std::make_shared<DummyLink>(), Comms::CopyLocal);
-	comms.addLink("teensy", std::make_shared<USBSerialLink>("/dev/cu.usbmodem848141", 115200));
+	//comms.addLink("teensy", std::make_shared<USBSerialLink>("/dev/cu.usbmodem848141", 115200));
+	if(use_usb) comms.addLink("teensy", std::make_shared<USBSerialLink>("/dev/cu.usbmodem2753871", 115200));
 
 	if(TEST_comms) comms_test(comms); // hacky way to break code out of main - would prefer a separate file but don't know how to write the makefile for this
 
@@ -64,13 +71,11 @@ int main(int argc, char* argv[]) {
 	task_manager.registerTask(std::make_shared<SurfaceAndWait>(thread_manager, comms));
 
 	task_manager.onStart("EStopDaemon, CommsDaemon, WaitForStart");
-	task_manager.onBlock("SurfaceAndWait");
 	task_manager.configureTree(
 		"[WaitForStart ? Submerge]"
 		"[Submerge ? ValidationGate : SurfaceAndWait]"
 		"[ValidationGate ? SurfaceAndWait : SurfaceAndWait]"
 		"[EStopDaemon : SurfaceAndWait]"
-		//"[EStopDaemon ? __exit__ : __start__ ]" // no framework for meta tasks yet, ie TaskManager functions that can be triggered from Tasks returning
 	);
 
 	cout << task_manager.listTasks();
@@ -86,14 +91,18 @@ int main(int argc, char* argv[]) {
 		if(comms.hasNew("pi", "cmdline", cmdline_ts.getTimePoint())) {
 			cmdline_ts.touch();
 			std::string cmd = comms.get<std::string>("pi", "cmdline");
-			if(cmd == "listTasks()") {
+			if(cmd == "tasks") {
 				cout << task_manager.listTasks();
-			} else if(cmd == "listThreads()") {
+			} else if(cmd == "threads") {
 				cout << thread_manager.listThreads();
-			} else if(cmd == "quit") {
-				break;
+			} else if(cmd == "kill" || cmd == "quit") {
+				comms.send("teensy", "cmd", comms_util::Hint::String, std::string("stop"));
+				task_manager.killAll();
+			} else if(cmd.find("configure") != std::string::npos) {
+				task_manager.configureTree(cmd.substr(cmd.find("configure")+1));
+			} else if(cmd == "ESTOP" || cmd == "SAFE") {
+				comms.send("teensy", "cmd", comms_util::Hint::String, cmd);
 			}
-			LOG_INFO << "Interpreter caught '" << cmd << "'";
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}

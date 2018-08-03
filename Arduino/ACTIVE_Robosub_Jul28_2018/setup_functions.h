@@ -20,7 +20,7 @@ void setupIMU() {
     Serial.println(F("BOOT\tIMU found."));
     uint8_t sys, gyro, accel, mag;
     bno055.getCalibration(&sys, &gyro, &accel, &mag); // this blocks the entire program if it fails to get the data
-    String msg = String("INFO Imu: Sys = ") + sys + ", Gyro = " + gyro + ", Accel = " + accel + ", Mag = " + mag; Serial.println(msg);
+    String msg = String("//BOOT Imu: Sys = ") + sys + ", Gyro = " + gyro + ", Accel = " + accel + ", Mag = " + mag; Serial.println(msg);
   } else {
     Serial.println(F("BOOT\tIMU initialization failed. Continuing... even though it's pointless."));
   }
@@ -92,6 +92,8 @@ cal log:
 void setupPeripherals() {
   setupIMU();
   ms5803.begin();
+
+  pinMode(PIN_ADC_KILL, INPUT);
 }
 
 

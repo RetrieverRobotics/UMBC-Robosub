@@ -102,6 +102,9 @@ std::map<String, std::map<String, float>> mode_vars = {
 
 struct sensor_data_struct {
 	float water_pressure, water_temp;
+	int count_kill_adc; // count out of 4095 of adc reading kill switch (battery voltage means system enabled)
+	int count_batt_adc; // not implemented
+	float battery_voltage; // not implemented
 	EulerVector3 e_orientation; // (e)uler
 } sensor_data;
 
@@ -120,6 +123,8 @@ std::map<String, NBDelayCallback> log_triggers = {
 	{ "thr", NBDelayCallback(200, logThrusters) },
 	{ "pid", NBDelayCallback(200, logPID) },
 };
+
+const int PIN_ADC_KILL = 22;
 
 #include "setup_functions.h" // include this after all sensor definitions
 
@@ -201,6 +206,8 @@ void readSensors() {
 	sensor_data.e_orientation.set(mpu9250.yaw, mpu9250.roll, mpu9250.pitch);
 
 #endif
+
+	sensor_data.count_kill_adc = analogRead(PIN_ADC_KILL);
 }
 
 #define MAX_CHARS_PER_LOOP (20)
@@ -800,10 +807,11 @@ void logSensors(void) {
 	Serial.println("INFO log.sensors...");
 	msg = String("INFO Pressure (mbar): ") + sensor_data.water_pressure; Serial.println(msg);
 	msg = String("INFO Temperature (C): ") + sensor_data.water_temp; Serial.println(msg);
-	msg = String("INFO Orientation (degrees): Yaw = ") + sensor_data.e_orientation.roll()
+	msg = String("INFO Orientation (degrees): Yaw = ") + sensor_data.e_orientation.yaw()
 		+ " Pitch = " + sensor_data.e_orientation.pitch()
-		+ " Roll = " + sensor_data.e_orientation.roll();
-	Serial.println(msg); Serial.println();
+		+ " Roll = " + sensor_data.e_orientation.roll(); Serial.println(msg);
+	msg = String("INFO Kill ADC (cnt): ") + sensor_data.count_kill_adc; Serial.println(msg);
+	Serial.println();
 }
 
 void logPID(void) {

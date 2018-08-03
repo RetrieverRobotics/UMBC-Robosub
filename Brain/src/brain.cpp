@@ -41,14 +41,56 @@ int main(int argc, char* argv[]) {
 	int opt;
 	bool TEST_comms = false;
 	bool use_usb = false;
-	while( (opt = getopt(argc, argv, "ctu")) != -1) {
+	while( (opt = getopt(argc, argv, "c:p:l:t:d:euh")) != -1) {
 		switch(opt) {
+			case 'h':
+				std::cout << "-c : Start delay\n-p : Submerge pressure\n-l : Submerge tol\n-t : Validation thrust\n-d : Validation dur\n-u : Use USB\n-e : Run tests" << std::endl;
+				return 0;
 			case 'c':
-				comms.send("pi", "comp_start_delay_sec", comms_util::Hint::Int, (int)30);
+				try {
+					int dur = stoi(optarg);
+					comms.send("pi", "setup_delay", comms_util::Hint::Int, (int)dur);
+					LOG_INFO << "-c = Set start delay for Setup to " << dur << " seconds.";
+				} catch(std::invalid_argument& e) {}
+
 				break;
+
+			case 'p':
+				try {
+					int pressure = stoi(optarg);
+					comms.send("pi", "submerge_pressure", comms_util::Hint::Int, (int)pressure);
+					LOG_INFO << "-p = Set target pressure for Submerge to " << pressure << " millibars.";
+				} catch(std::invalid_argument& e) {}
+
+				break;
+			case 'l':
+				try {
+					int tolerance = stoi(optarg);
+					comms.send("pi", "submerge_tolerance", comms_util::Hint::Int, (int)tolerance);
+					LOG_INFO << "-l = Set tolerance for Submerge to +-" << tolerance << " millibars";
+				} catch(std::invalid_argument& e) {}
+
+				break;
+
 			case 't':
+				try {
+					int thrust = stoi(optarg);
+					comms.send("pi", "validation_thrust", comms_util::Hint::Int, (int)thrust);
+					LOG_INFO << "-t = Set thrust for ValidationGate to " << thrust << ".";
+				} catch(std::invalid_argument& e) {}
+
+				break;
+			case 'd':
+				try {
+					int duration = stoi(optarg);
+					comms.send("pi", "validation_duration", comms_util::Hint::Int, (int)duration);
+					LOG_INFO << "-d = Set duration for ValidationGate to " << duration << ".";
+				} catch(std::invalid_argument& e) {}
+				break;
+
+			case 'e':
 				TEST_comms = true;
-				LOG_INFO << "-t = Tests enabled";
+				LOG_INFO << "-e = Tests enabled";
 				break;
 			case 'u':
 				use_usb = true;

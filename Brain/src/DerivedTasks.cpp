@@ -63,7 +63,7 @@ const Task::Result Setup::update(void) {
         case RunType::Init:
 
             if(comms.isSetAs<int>("pi", "comp_start_delay_sec")) {
-                int dur = comms.get<double>("pi", "comp_start_delay_sec");
+                int dur = comms.get<int>("pi", "comp_start_delay_sec");
                 delay.reset(dur*1000);
                 LOG_INFO << "Competition mode: Delaying start by " << dur << " seconds...";
             }
@@ -77,7 +77,7 @@ const Task::Result Setup::update(void) {
                     comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid yaw lock"));
                     comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid yaw start"));
 
-                    comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure tune 2,0.1,0"));
+                    comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure tune 2,0.5,0"));
                     comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure lock"));
                     comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure start"));
                 }
@@ -96,11 +96,14 @@ const Task::Result Setup::update(void) {
 // ********************************
 
 Submerge::Submerge(ThreadManager& _t_m, Comms& _c) : Task("Submerge", _t_m, _c),
-    timeout(10*1000), pressure_target(1050), pressure_tolerance(5) {}
+    timeout(15*1000), pressure_target(1060), pressure_tolerance(5) {}
 
 const Task::Result Submerge::update(void) {
 	switch(getRunType()) {
         case RunType::Init:
+            if(comms.isSetAs<int>("pi", "submerge_pressure")) pressure_target = (float)comms.get<int>("pi", "submerge_pressure");
+            if(comms.isSetAs<int>("pi", "submerge_tolerance")) pressure_tolerance = (float)comms.get<int>("pi", "submerge_tolerance");
+
             comms.send("teensy", "cmd", comms_util::Hint::String, std::string("log telemetry start"));
             comms.send("teensy", "cmd", comms_util::Hint::String, std::string("pid pressure ") + std::to_string(pressure_target));
             depth_ts.touch();
@@ -135,14 +138,17 @@ const Task::Result Submerge::update(void) {
 // ********************************
 
 ValidationGate::ValidationGate(ThreadManager& _t_m, Comms& _c) : Task("ValidationGate", _t_m, _c),
-    delay(0), operation(0) {}
+    delay(0), operation(0), thrust(30), dur(5) {}
 
 const Task::Result ValidationGate::update(void) {
     switch(getRunType()) {
         case RunType::Init:
+            if(comms.isSetAs<int>("pi", "validation_thrust")) thrust = comms.get<int>("pi", "validation_thrust");
+            if(comms.isSetAs<int>("pi", "validation_duration")) dur = comms.get<int>("pi", "validation_duration");
+
             operation = 0;
-            comms.send("teensy", "cmd", comms_util::Hint::String, std::string("thrust 30"));
-            delay.reset(5*1000);
+            comms.send("teensy", "cmd", comms_util::Hint::String, std::string("thrust ") + std::to_string(thrust));
+            delay.reset(dur*1000);
             break;
         case RunType::Normal:
             if(delay.timedOut()) {

@@ -46,17 +46,17 @@ void TaskManager::configureTree(const std::string& config) {
 		std::smatch match_parts;
 		std::string::const_iterator bt_start(branch_text.cbegin());
 		if(regex_search(bt_start, branch_text.cend(), match_parts, e_branch_parts)) {
-			LOG_INFO << branch_text << std::endl;
+			LOG_INFO << branch_text;
 
 			std::string root_tag = match_parts[1];
 			if(!isRegistered(root_tag)) {
-				LOG_WARNING << "\tRoot task '" << root_tag << "' not registered [ from '" << branch_text << "' ] - Skipping branch." << std::endl;
+				LOG_WARNING << "\tRoot task '" << root_tag << "' not registered [ from '" << branch_text << "' ] - Skipping branch.";
 				continue;
 			}
 
 			try {
 				branches.at(root_tag);
-				LOG_WARNING << "\tA branch already exists for '" << root_tag << "' [ from root / '" << branch_text << "' ] - Skipping branch." << std::endl;
+				LOG_WARNING << "\tA branch already exists for '" << root_tag << "' [ from root / '" << branch_text << "' ] - Skipping branch.";
 				continue;
 			} catch( const std::out_of_range& e) {}
 
@@ -65,24 +65,24 @@ void TaskManager::configureTree(const std::string& config) {
 
 			if(!std::string(match_parts[2]).empty()) {
 				std::vector<std::string> rejects = splitAndVerify(match_parts[2], success_leaves);
-				for(auto& tag : rejects) LOG_WARNING << "\tTask '" << tag << "' not registered [ from success / '" << branch_text << "' ] : Ignoring." << std::endl;
+				for(auto& tag : rejects) LOG_WARNING << "\tTask '" << tag << "' not registered [ from success / '" << branch_text << "' ] : Ignoring.";
 			}
 
 			if(!std::string(match_parts[3]).empty()) {
 				std::vector<std::string> rejects = splitAndVerify(match_parts[3], failure_leaves);
-				for(auto& tag : rejects) LOG_WARNING << "\tTask '" << tag << "' not registered [ from failure / '" << branch_text << "' ] : Ignoring." << std::endl;
+				for(auto& tag : rejects) LOG_WARNING << "\tTask '" << tag << "' not registered [ from failure / '" << branch_text << "' ] : Ignoring.";
 			}
 
 			if(success_leaves.size() == 0 && failure_leaves.size() == 0) {
-				LOG_WARNING << "\tNo valid responses [ from '" << branch_text << "' ] : Skipping branch." << std::endl;
+				LOG_WARNING << "\tNo valid responses [ from '" << branch_text << "' ] : Skipping branch.";
 				continue;
 			}
 
-			LOG_DEBUG << "S leaves: " << success_leaves.size() << ", F leaves: " << failure_leaves.size() << std::endl;
+			LOG_DEBUG << "S leaves: " << success_leaves.size() << ", F leaves: " << failure_leaves.size();
 			branches.insert( {root_tag, branch_t(success_leaves, failure_leaves)} );
-			LOG_INFO << "\t*** Branch added ***" << std::endl;
+			LOG_INFO << "\t*** Branch added ***";
 		} else {
-			LOG_WARNING << "Bad branch syntax [ from '" << branch_text << "' ] : Skipping branch." << std::endl;
+			LOG_WARNING << "Bad branch syntax [ from '" << branch_text << "' ] : Skipping branch.";
 		}
 
 	}
@@ -113,7 +113,7 @@ void TaskManager::update(bool reset_after_branch) {
 			if(result.getStatus() != Task::ReturnStatus::Continue) {
 				task->kill(reset_after_branch);
 
-				LOG_INFO << task->getFullName() << " { " << Task::ReturnMsg[(int)result.getStatus()] << ": " << result.getMessage() << " }" << std::endl;
+				LOG_INFO << task->getFullName() << " { " << Task::ReturnMsg[(int)result.getStatus()] << ": " << result.getMessage() << " }";
 
 				branch(task, result.getStatus());
 			}

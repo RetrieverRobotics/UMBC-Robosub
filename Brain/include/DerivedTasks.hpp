@@ -58,6 +58,8 @@ public:
 private:
 	TimeOut delay;
 	int operation;
+	int thrust;
+	int dur;
 };
 
 class SurfaceAndWait : public Task {

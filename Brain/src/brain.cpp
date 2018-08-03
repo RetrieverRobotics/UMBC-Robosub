@@ -30,6 +30,9 @@ void comms_test(Comms&);
 
 
 int main(int argc, char* argv[]) {
+	static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
+	plog::init(plog::debug, "logs/log.txt").addAppender(&consoleAppender);
+
 	LOG_INFO << "Electrifying Brain :)";
 
 	int opt;
@@ -47,9 +50,6 @@ int main(int argc, char* argv[]) {
 				break;
 		}
 	}
-
-	static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
-	plog::init(plog::debug, "logs/log.txt").addAppender(&consoleAppender);
 
 	//std::cout << USBSerialLink::stringifyPorts() << std::endl;
 

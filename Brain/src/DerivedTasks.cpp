@@ -30,17 +30,14 @@ const Task::Result XXX::update(void) {
 // WaitForStart
 // ********************************
 
-WaitForStart::WaitForStart(ThreadManager& _t_m, Comms& _c) : Task("WaitForStart", _t_m, _c), timeout(2) {}
+WaitForStart::WaitForStart(ThreadManager& _t_m, Comms& _c) : Task("WaitForStart", _t_m, _c) {}
 
 const Task::Result WaitForStart::update(void) {
     switch(getRunType()) {
         case RunType::Init:
-            //timeout.reset();
             break;
 
         case RunType::Normal:
-            if(timeout.timedOut()) return Task::Result(ReturnStatus::Failure, "TIMEOUT... which shouldn't happen, but demo reasons");
-
             if(comms.isSet("pi", "cmdline") && comms.get<std::string>("pi", "cmdline").find("start") != std::string::npos) {
                 return Task::Result(ReturnStatus::Success, "Starting...");
             }
@@ -59,7 +56,7 @@ const Task::Result WaitForStart::update(void) {
 // ********************************
 
 Submerge::Submerge(ThreadManager& _t_m, Comms& _c) : Task("Submerge", _t_m, _c),
-    timeout(20), pressure_target(1050), pressure_tolerance(3) {}
+    timeout(10*1000), pressure_target(1010), pressure_tolerance(10) {}
 
 const Task::Result Submerge::update(void) {
 	switch(getRunType()) {
@@ -174,37 +171,29 @@ const Task::Result EStopDaemon::update(void) {
 // ********************************
 
 CommsDaemon::CommsDaemon(ThreadManager& _t_m, Comms& _c)
-    : Task("CommsDaemon", _t_m, _c), keep_alive(1, true), keep_alive_ticker(0) {}
+    : Task("CommsDaemon", _t_m, _c) {}
 
 const Task::Result CommsDaemon::update(void) {
     switch(getRunType()) {
         case RunType::Init:
             load(a_interpreter, "interpreter", th_man::RunLevel::Critical);
-            doStuff();
             break;
+
         case RunType::Normal:
             if(status(a_interpreter) == th_man::ThreadStatus::Paused) {
                 comms.send("pi", "cmdline", comms_util::Hint::String, a_interpreter.getStr());
                 resume(a_interpreter);
             }
-            doStuff();
+
+            comms.receiveAll();
             break;
+
         case RunType::Stop:
             unloadAll();
             break;
     }
 
     return Task::Result(ReturnStatus::Continue, "");
-}
-
-void CommsDaemon::doStuff(void) {
-    if(keep_alive.timedOut()) { // increment and send an integer under the ALIVE field every 1 second ( or according to timeout )
-        keep_alive.reset();
-        comms.send("teensy", "ALIVE", comms_util::Hint::Int, (int)keep_alive_ticker);
-        ++keep_alive_ticker;
-    }
-    
-    comms.receiveAll();
 }
 
 // vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv

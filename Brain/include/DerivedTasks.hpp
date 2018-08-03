@@ -26,7 +26,6 @@ public:
 
 	const Result update(void);
 private:
-	TimeOut timeout;
 };
 
 class Submerge : public Task {
@@ -72,11 +71,6 @@ public:
 
 private:
 	action::Interpreter a_interpreter;
-	
-	int keep_alive_ticker;
-	TimeOut keep_alive;
-
-	void doStuff(void);
 };
 
 // DEFERRED - These will not be used this year

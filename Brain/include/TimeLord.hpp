@@ -36,9 +36,9 @@ class TimeOut {
 	using clock = std::chrono::steady_clock;
 public:
 	// construct given a duration, but do not start
-	explicit TimeOut(int seconds, bool _enabled = false) {
+	explicit TimeOut(int milliseconds, bool _enabled = false) {
 		enabled = _enabled;
-		dur = std::chrono::seconds(seconds);
+		dur = std::chrono::milliseconds(milliseconds);
 	}
 	// start from now
 	void reset(void) {
@@ -46,8 +46,8 @@ public:
 		enabled = true;
 	}
 	// set duration and start from now
-	void reset(int seconds) {
-		dur = std::chrono::seconds(seconds);
+	void reset(int milliseconds) {
+		dur = std::chrono::milliseconds(milliseconds);
 		reset();
 	}
 
@@ -63,7 +63,7 @@ private:
 	// needs to a time_point to track start time
 	bool enabled;
 	clock::time_point timestamp;
-	std::chrono::seconds dur;
+	std::chrono::milliseconds dur;
 };
 
 #endif

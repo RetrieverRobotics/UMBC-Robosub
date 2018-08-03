@@ -651,12 +651,12 @@ void parseCommand(String cmd) {
 						} else if(args[0].equals("mode")) { // mode:
 							if(num_args == 2) {
 								if(args[1].equals("pilot")) { // mode:pilot
+									startPilot(); // run before changing i_mode, otherwise text commands to config mode are invalid
 									i_mode = mode::Pilot;
-									startPilot();
 									Serial.println("CMD config.mode -> Pilot - Parse on \\n.");
 								} else if(args[1].equals("pilot_")) { // mode:pilot_
+									startPilot(); // run before changing i_mode, otherwise text commands to config mode are invalid
 									i_mode = mode::Pilot_OnChar;
-									startPilot();
 									Serial.println("CMD config.mode -> Pilot - Parse each char.");
 								} else if(args[1].equals("test")) { // mode:test
 									i_mode = mode::Test;
@@ -709,19 +709,19 @@ void parseCommand(String cmd) {
 						Serial.println("CMD pilot.Halt");
 
 					} else if(cmd.equals("J")) { // left big
-						pid_target["yaw"] += pilot_vars["jump_yaw"];
+						pid_target["yaw"] -= pilot_vars["jump_yaw"];
 						Serial.print("CMD pilot.Left -> "); Serial.println(pid_target["yaw"]);
 
 					} else if(cmd.equals("j")) { // left small
-						pid_target["yaw"] += pilot_vars["step_yaw"];
+						pid_target["yaw"] -= pilot_vars["step_yaw"];
 						Serial.print("CMD pilot.Left -> "); Serial.println(pid_target["yaw"]);
 
 					} else if(cmd.equals("L")) { // right big
-						pid_target["yaw"] -= pilot_vars["jump_yaw"];
+						pid_target["yaw"] += pilot_vars["jump_yaw"];
 						Serial.print("CMD pilot.Right -> "); Serial.println(pid_target["yaw"]);
 
 					} else if(cmd.equals("l")) { // right small
-						pid_target["yaw"] -= pilot_vars["step_yaw"];
+						pid_target["yaw"] += pilot_vars["step_yaw"];
 						Serial.print("CMD pilot.Right -> "); Serial.println(pid_target["yaw"]);
 
 					} else if(cmd.equals("u")){ // ascend
